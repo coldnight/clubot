@@ -1,13 +1,11 @@
 2012-10-10:
     Rwrite With pyxmpp2
-本版本基于master分支,使用pyxmpp2重写,
 需要 python2.7
 安装:
     需要安装pyxmpp2(dnspython)模块
     因少量的使用Linux shell命令,所以需要再win下运行需要对代码进行稍微的修改
 配置:
-    和原来版本不同的是为了安全起见可以不填入密码,在运行时会提示输入密码
-    暂时不使用daemon
+    为了安全起见可以不填入密码,在运行时会提示输入密码
 运行:
     启动:
         python clubot.py
