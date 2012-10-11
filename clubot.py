@@ -27,7 +27,7 @@ from pyxmpp2.interfaces import XMPPFeatureHandler
 from pyxmpp2.interfaces import presence_stanza_handler, message_stanza_handler
 from pyxmpp2.ext.version import VersionProvider
 from settings import USER,PASSWORD, DEBUG, PIDPATH, LOGPATH, __version__, status
-from plugin.db import add_member, del_member, get_member, change_status
+from plugin.db import add_member, del_member, get_member, change_status, get_nick
 from plugin.cmd import send_all_msg, send_command
 
 
@@ -97,8 +97,8 @@ class BotChat(EventHandler, XMPPFeatureHandler):
                                                     .format(stanza.from_jid))
         presence = Presence(to_jid = stanza.from_jid.bare(),
                                                     stanza_type = "unsubscribe")
-        #TODO 离开时昵称应该会发生相应的改变
-        message = send_all_msg(stanza, u'{0} 离开群'.format(stanza.from_jid.local))
+        nick = get_nick(stanza.from_jid)
+        message = send_all_msg(stanza, u'{0} 离开群'.format(nick))
         del_member(stanza.from_jid.bare())
         r =[stanza.make_accept_response(), presence]
         r.extend(message)
@@ -108,7 +108,6 @@ class BotChat(EventHandler, XMPPFeatureHandler):
     def handle_presence_unsubscribed(self, stanza):
         logging.info(u"{0!r} acknowledged our subscrption cancelation"
                                                     .format(stanza.from_jid))
-        #TODO 离开时昵称应该会发生相应的改变
         del_member(stanza.from_jid.bare())
         return True
 
