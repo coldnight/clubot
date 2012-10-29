@@ -14,6 +14,8 @@ import sys, os
 import signal
 import subprocess
 import getpass
+import threading
+
 
 from pyxmpp2.jid import JID
 from pyxmpp2.message import Message
@@ -21,7 +23,7 @@ from pyxmpp2.presence import Presence
 from pyxmpp2.client import Client
 from pyxmpp2.settings import XMPPSettings
 from pyxmpp2.interfaces import EventHandler, event_handler, QUIT
-from pyxmpp2.streamevents import AuthorizedEvent, DisconnectedEvent
+from pyxmpp2.streamevents import DisconnectedEvent
 from pyxmpp2.roster import RosterReceivedEvent
 from pyxmpp2.interfaces import XMPPFeatureHandler
 from pyxmpp2.interfaces import presence_stanza_handler, message_stanza_handler
@@ -49,7 +51,8 @@ class BotChat(EventHandler, XMPPFeatureHandler):
                             "software_version": __version__,
                             "tls_verify_peer": False,
                             "starttls": True,
-                            "ipv6":False
+                            "ipv6":False,
+                            "delayed_call":True
                             })
 
         settings["password"] = PASSWORD
@@ -170,6 +173,11 @@ class BotChat(EventHandler, XMPPFeatureHandler):
     def handle_all(self, event):
         logging.info(u"-- {0}".format(event))
 
+def daemon():
+    #Write Daemon Here
+    print 'daemon'
+
+
 def main():
     global PASSWORD
     if not PASSWORD and args.passwd== 'encrypt':
@@ -178,7 +186,6 @@ def main():
         PASSWORD = raw_input("Password: ")
     logging.basicConfig(level=logging.INFO)
 
-    logging.info('main password %s', PASSWORD)
     if DEBUG:
         handler = logging.StreamHandler()
         level = logging.DEBUG
@@ -220,16 +227,25 @@ def main():
         logger.propagate = False
     bot = BotChat()
     try:
-        bot.run()
-    except:
-        pass
+        #bot.run()
+        t = threading.Thread(name='run', target=bot.run)
+        t.run()
+        d = threading.Thread(name='daemon', target=daemon)
+        d.setDaemon(True)
+        d.run()
+    except Exception as ex:
+        logging.error(ex.mssage)
+
+
+
+
 
 def restart(signum, stack):
     logging.info('Restart...')
     pwd = subprocess.Popen('echo %s' % PASSWORD, stdin =subprocess.PIPE,
                            stdout = subprocess.PIPE, stderr = subprocess.PIPE,
                            shell = True)
-    p = subprocess.Popen(r'python %s --plain&& kill -9 %d'% (
+    subprocess.Popen(r'python %s --plain&& kill -9 %d'% (
                                                        os.path.split(__file__)[1],
                                                         PID),
                      stdin = pwd.stdout, stdout = subprocess.PIPE,
