@@ -25,7 +25,6 @@
 
 import re
 import time
-import threading
 from db import get_members
 from db import get_nick, get_member
 from db import edit_member
