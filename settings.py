@@ -16,7 +16,7 @@ PASSWORD = ''
 
 DEBUG = False
 
-__version__ = '0.3'
+__version__ = '0.4 beta'
 
 PIDPATH = r'logs/clubot.pid'
 
