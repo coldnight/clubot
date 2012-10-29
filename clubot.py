@@ -142,13 +142,18 @@ class BotChat(EventHandler, XMPPFeatureHandler):
                         thread = stanza.thread)
                         """
         body = stanza.body
+        name = stanza.from_jid.bare().as_string()
         if not body:
             return True
         if body.startswith('$'):
-            msg = send_command(stanza, body)
+            t = threading.Thread(name=name+'runcmd', target=send_command, args=(stanza, self.stream, body))
         else:
-            msg = send_all_msg(stanza, body)
-        return msg
+            t = threading.Thread(name=name+'send_msg',target=send_all_msg, args=(stanza, self.stream, body))
+
+        t.start()
+        return True
+
+
 
     @event_handler(DisconnectedEvent)
     def handle_disconnected(self, event):
@@ -158,6 +163,11 @@ class BotChat(EventHandler, XMPPFeatureHandler):
     @property
     def roster(self):
         return self.client.roster
+
+
+    @property
+    def stream(self):
+        return self.client.stream
 
     @event_handler(RosterReceivedEvent)
     def handle_roster_received(self, event):
@@ -234,7 +244,7 @@ def main():
         d.setDaemon(True)
         d.run()
     except Exception as ex:
-        logging.error(ex.mssage)
+        logging.error(ex.message)
 
 
 

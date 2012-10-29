@@ -172,7 +172,7 @@ class CommandHandler(object):
             if not receiver:
                 m  = self._send_cmd_result(stanza, "%s 用户不存在" % nick)
             else:
-                m = send_to_msg(stanza, receiver, body)
+                m = send_to_msg(stanza,self.stream, receiver, body)
         else:
             m = self.help(stanza, 'mgsto')
 
@@ -188,7 +188,7 @@ class CommandHandler(object):
             r = edit_member(frm, nick = nick)
             if r:
                 body = "%s 更改昵称为 %s" % (oldnick, nick)
-                m = send_all_msg(stanza, body)
+                m = send_all_msg(stanza,self.stream, body)
             else:
                 m = self._send_cmd_result(stanza, '昵称已存在')
         else:
@@ -208,7 +208,7 @@ class CommandHandler(object):
             poster = "Pythoner Club: %s" % nick
             r = paste_code(poster,typ, codes)
             if r:
-                m = send_all_msg(stanza, r)
+                m = send_all_msg(stanza, self.stream, r)
                 mc = self._send_cmd_result(stanza, r)
                 m.append(mc)
             else:
@@ -314,8 +314,7 @@ class CommandHandler(object):
         """返回命令结果"""
         frm = stanza.from_jid
         email = get_email(frm)
-        message = send_msg(stanza, email, body)
-        return message
+        send_msg(stanza, self.stream, email, body)
 
 
     def _get_cmd(self, name = None):
@@ -352,10 +351,11 @@ class CommandHandler(object):
         if body:args.append(body)
         return c, args
 
-    def _run_cmd(self, stanza, cmd):
+    def _run_cmd(self, stanza, stream, cmd):
         """获取命令"""
         c, args = self._parse_args(cmd)
         email = get_email(stanza.from_jid)
+        self.stream = stream
         try:
             logger.info('%s run cmd %s', email, c)
             m =getattr(self, c)(stanza, *args)
@@ -394,19 +394,16 @@ class AdminCMDHandle(CommandHandler):
         """剔除用户($rm nick1 nick2 nick3...)"""
         emails = [get_member(nick = n) for n in args]
         if emails >= 1:
-            p = []
             for e in emails:
                 jid = JID(e)
-                p.append(
+                self.stream.send(
                     Presence(
                         to_jid = jid,
                         stanza_type='unsubscribe'
                         ))
                 del_member(jid)
         else:
-            p = self.help(stanza, 'rm')
-        return p
-
+            self.help(stanza, 'rm')
 
 
 run_cmd = CommandHandler()._run_cmd
@@ -414,17 +411,16 @@ admin_run_cmd = AdminCMDHandle()._run_cmd
 
 
 
-def send_command(stanza, body):
+def send_command(stanza, stream, body):
     cmd = body[1:]
     email = get_email(stanza.from_jid)
     if email in ADMINS:
-        m = admin_run_cmd(stanza, cmd)
+        admin_run_cmd(stanza, stream, cmd)
     else:
-        m = run_cmd(stanza, cmd)
-    return m
+        run_cmd(stanza, stream, cmd)
 
 
-def send_msg(stanza, to_email, body):
+def send_msg(stanza, stream, to_email, body):
     typ = stanza.stanza_type
     if typ not in ['normal', 'chat', 'groupchat', 'headline']:
         typ = 'normal'
@@ -433,36 +429,33 @@ def send_msg(stanza, to_email, body):
         stanza_type=typ,
         thread = stanza.thread,
         body=body)
-    return m
+    stream.send(m)
 
-def send_all_msg(stanza, body):
+def send_all_msg(stanza, stream, body):
     frm = stanza.from_jid
     nick = get_nick(frm)
     add_history(frm, 'all', body)
     tos = get_members(frm)
-    ms = []
     if '@' in body:
         r = re.findall(r'@<(.*?)>', body)
         mem = [get_member(nick=n) for n in r if get_member(nick = n)]
         if mem:
             if body.startswith('@<'):
                 b = re.sub(r'^@<.*?>', '', body)
-                return send_to_msg(stanza, mem[0], b)
+                send_to_msg(stanza, stream, mem[0], b)
+                return
             b = '%s 提到了你说: %s' % (nick, body)
-            ml = [send_to_msg(stanza, to, b) for to in mem]
-            ms += ml
+            [send_to_msg(stanza, stream, to, b) for to in mem]
     elif body.strip() == 'help':
-        return send_command(stanza, '$help')
+        send_command(stanza, stream, '$help')
+        return
     body = "[%s] %s" % (nick, body)
-    for to in tos:
-        m = send_msg(stanza, to, body)
-        ms.append(m)
-    return ms
+    [send_msg(stanza, stream, to, body) for to in tos]
 
 
-def send_to_msg(stanza, to, body):
+def send_to_msg(stanza, stream, to, body):
     frm = stanza.from_jid
     nick = get_nick(frm)
     add_history(frm, to, body)
     body = "[%s 悄悄对你说] %s" % (nick, body)
-    return send_msg(stanza, to, body)
+    send_msg(stanza, stream, to, body)
