@@ -6,7 +6,9 @@
 #
 # 2012-10-10 12:00
 #     * 使用pyxmpp2重写
-#
+# 2012-10-29 14:25
+#     * 修复自动下线和发送系统消息的bug
+#     * 修复用户离群的bug
 
 
 import logging
@@ -78,7 +80,7 @@ class BotChat(EventHandler, XMPPFeatureHandler):
         message = Message(to_jid = frm, body = welcome(frm), stanza_type=stanza.stanza_type)
         add_member(frm)
         r =[stanza.make_accept_response(), presence, message]
-        r.extend(send_all_msg(stanza, new_member(frm)))
+        r.extend(send_all_msg(stanza, new_member(frm), True))
         return r
 
     @presence_stanza_handler("subscribed")
@@ -91,7 +93,7 @@ class BotChat(EventHandler, XMPPFeatureHandler):
         add_member(frm)
         r =[presence, message]
         add_member(frm)
-        r.extend(send_all_msg(stanza, new_member(frm)))
+        r.extend(send_all_msg(stanza, new_member(frm), True))
         return r
 
     @presence_stanza_handler("unsubscribe")
@@ -101,7 +103,7 @@ class BotChat(EventHandler, XMPPFeatureHandler):
         presence = Presence(to_jid = stanza.from_jid.bare(),
                                                     stanza_type = "unsubscribe")
         nick = get_nick(stanza.from_jid)
-        message = send_all_msg(stanza, u'{0} 离开群'.format(nick))
+        message = send_all_msg(stanza, u'{0} 离开群'.format(nick), True)
         del_member(stanza.from_jid.bare())
         r =[stanza.make_accept_response(), presence]
         r.extend(message)
@@ -131,16 +133,6 @@ class BotChat(EventHandler, XMPPFeatureHandler):
     @message_stanza_handler()
     def handle_message(self, stanza):
         logging.info(u"{0} send message".format(stanza.from_jid))
-        """
-        if stanza.subject:
-            subject = u"Re: " + stanza.subject
-        else:
-            subject = None
-        msg = Message(stanza_type = stanza.stanza_type,
-                        from_jid = stanza.to_jid, to_jid = stanza.from_jid,
-                        subject = subject, body = stanza.body,
-                        thread = stanza.thread)
-                        """
         body = stanza.body
         if not body:
             return True
@@ -229,12 +221,12 @@ def main():
     try:
         #bot.run()
         t = threading.Thread(name='run', target=bot.run)
-        t.run()
+        t.start()
         d = threading.Thread(name='daemon', target=daemon)
         d.setDaemon(True)
         d.run()
     except Exception as ex:
-        logging.error(ex.mssage)
+        logging.error(ex.message)
 
 
 
