@@ -15,3 +15,5 @@
         python clubot.py --restart
 
 欢迎加入pythonerclub@gmail.com讨论
+
+threading 分支使用多线程重写消息处理,一个消息会开启一个线程处理,防止阻塞
