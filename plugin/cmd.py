@@ -182,7 +182,7 @@ class CommandHandler(object):
             if not receiver:
                 m  = self._send_cmd_result(stanza, "%s 用户不存在" % nick)
             else:
-                m = send_to_msg(stanza,self.stream, receiver, body)
+                m = send_to_msg(stanza,self._stream, receiver, body)
         else:
             m = self.help(stanza, 'mgsto')
 
@@ -198,7 +198,7 @@ class CommandHandler(object):
             r = edit_member(frm, nick = nick)
             if r:
                 body = "%s 更改昵称为 %s" % (oldnick, nick)
-                m = send_all_msg(stanza,self.stream, body)
+                m = send_all_msg(stanza,self._stream, body)
                 m = send_all_msg(stanza, body, True)
             else:
                 m = self._send_cmd_result(stanza, '昵称已存在')
@@ -219,7 +219,7 @@ class CommandHandler(object):
             poster = "Pythoner Club: %s" % nick
             r = paste_code(poster,typ, codes)
             if r:
-                m = send_all_msg(stanza, self.stream, r)
+                m = send_all_msg(stanza, self._stream, r)
                 mc = self._send_cmd_result(stanza, r)
                 m.append(mc)
             else:
@@ -347,7 +347,7 @@ class CommandHandler(object):
         """返回命令结果"""
         frm = stanza.from_jid
         email = get_email(frm)
-        send_msg(stanza, self.stream, email, body)
+        send_msg(stanza, self._stream, email, body)
 
 
     def _get_cmd(self, name = None):
@@ -388,7 +388,7 @@ class CommandHandler(object):
         """获取命令"""
         c, args = self._parse_args(cmd)
         email = get_email(stanza.from_jid)
-        self.stream = stream
+        self._stream = stream
         try:
             logger.info('%s run cmd %s', email, c)
             m =getattr(self, c)(stanza, *args)
@@ -430,7 +430,7 @@ class AdminCMDHandle(CommandHandler):
         if emails >= 1:
             for e in emails:
                 jid = JID(e)
-                self.stream.send(
+                self._stream.send(
                     Presence(
                         to_jid = jid,
                         stanza_type='unsubscribe'
