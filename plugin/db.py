@@ -24,7 +24,7 @@ if DEBUG:
     hdl = logging.StreamHandler()
 else:
     hdl = logging.FileHandler(LOGPATH)
-fmt = logging.Formatter("%(asctime)s %(levelname)s %(message)s")
+fmt = logging.Formatter("(%(threadName)-2s) %(asctime)s %(levelname)s %(message)s")
 hdl.setFormatter(fmt)
 logger.addHandler(hdl)
 logger.setLevel(logging.INFO) # change to DEBUG for higher verbosity
@@ -187,6 +187,7 @@ def del_member(frm):
 def edit_member(frm, nick = None, last=None):
     cursor, conn = get_cursor()
     email = get_email(frm)
+    if nick == 'system': return False
     if nick:
         cursor.execute('select * from members where nick=?',(nick,))
         if cursor.fetchall():return False
@@ -264,7 +265,7 @@ def get_nick(frm= None, uid = None):
 
     cursor.execute(sql, param)
     r = cursor.fetchall()
-    result = r[0][0] if len(r) == 1 else email.split('@')[1]
+    result = r[0][0] if len(r) == 1 else email.split('@')[0]
     cursor.close()
     conn.close()
     return result

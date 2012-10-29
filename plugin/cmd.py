@@ -17,10 +17,15 @@
 # 2012-10-08 14:16
 #   * 修改运行命令方式,方便继承
 #   + 添加管理员命令
+# 2012-10-29 14:25
+#   * 修复部分bug
+#   + 添加提交bug
+#
 
 
 import re
 import time
+import threading
 from db import get_members
 from db import get_nick, get_member
 from db import edit_member
@@ -67,16 +72,19 @@ def _get_code_types():
         r = re.compile(r'<option\s+value="(.*?)".*?>(.*?)</option>')
         result = []
         for line in res.readlines():
-            if '<option' in line:
-                t = {}
-                t['key'], t['value'] = r.findall(line)[0]
-                result.append(t)
+            if '<option' not in line: continue
+            t = dict()
+            t['key'], t['value'] = r.findall(line)[0]
+            result.append(t)
         return result
-    result = http_helper(purl, callback=handle)
-    import string
-    t = string.Template("""$key : $value  """)
-    r = [t.substitute(v) for v in result]
-    result = '\n'.join(r)
+    try:
+        result = http_helper(purl, callback=handle)
+        import string
+        t = string.Template("""$key : $value  """)
+        r = [t.substitute(v) for v in result]
+        result = '\n'.join(r)
+    except:
+        result = u'代码服务异常,请通知管理员稍候再试'
     return result
 
 
@@ -86,7 +94,10 @@ def paste_code(poster, typ, codes):
     purl = "http://paste.linuxzen.com/"
 
     get_url = lambda res:res.url
-    url = http_helper(purl, param, get_url)
+    try:
+        url = http_helper(purl, param, get_url)
+    except:
+        return False
     if url == purl:
         return False
     else:
@@ -189,6 +200,7 @@ class CommandHandler(object):
             if r:
                 body = "%s 更改昵称为 %s" % (oldnick, nick)
                 m = send_all_msg(stanza,self.stream, body)
+                m = send_all_msg(stanza, body, True)
             else:
                 m = self._send_cmd_result(stanza, '昵称已存在')
         else:
@@ -234,10 +246,10 @@ class CommandHandler(object):
         """邀请好友加入 eg. $invite <yourfirendemail>"""
         if len(args) >= 1:
             to = args[0]
-            p1 = Presence(from_jid = stanza.get_to(),
+            p1 = Presence(from_jid = stanza.to_jid,
                          to_jid = JID(to),
                          stanza_type = 'subscribe')
-            p = Presence(from_jid = stanza.get_to(),
+            p = Presence(from_jid = stanza.to_jid,
                          to_jid = JID(to),
                          stanza_type = 'subscribed')
             return [p,p1]
@@ -271,6 +283,26 @@ class CommandHandler(object):
         else:
             return self._send_cmd_result(stanza, get_history(sef))
 
+    def bug(self, stanza, *args):
+        """提交bug(请详细描述bug,比如使用什么命令,返回了什么)"""
+        bugcontent = '\n'.join(args)
+        email = stanza.from_jid.bare().as_string()
+        username = get_nick(stanza.from_jid)
+        url = "http://www.linuxzen.com/wp-comments-post.php"
+        param = dict(author=username, email=email, comment=bugcontent,
+                    akismet_comment_nonce="7525bb940f", comment_post_ID='412',
+                    comment_parent=0, submit=u'发表评论', url='')
+        get_url = lambda res:res.url
+        try:
+            r = http_helper(url=url,param = param, callback=get_url)
+        except:
+            r = ''
+        if r == url:
+            self._send_cmd_result(stanza, u'感谢支持!!bug 提交成功')
+        else:
+            self._send_cmd_result(stanza, u'感谢支持!!bug 提交失败,稍候再试')
+
+
 
     def version(self, stanza, *args):
         """显示版本信息"""
@@ -281,6 +313,8 @@ class CommandHandler(object):
         body = "Version %s\nAuthors\n\t%s\n" % (__version__, '\n\t'.join(author))
         body += "\nhttps://github.com/coldnight/clubot"
         return self._send_cmd_result(stanza, body)
+
+
 
 
     def _set_cache(self, key, data, expires = None):
@@ -359,9 +393,9 @@ class CommandHandler(object):
         try:
             logger.info('%s run cmd %s', email, c)
             m =getattr(self, c)(stanza, *args)
-        except Exception ,e:
-            logger.warning('Error: line %d: %s', e.errno, e.strerror)
-            m = self._send_cmd_result(stanza, 'error')
+        except Exception as e:
+            logger.warning(e.message)
+            m = self._send_cmd_result(stanza, e.message)
 
         return m
 
@@ -392,6 +426,7 @@ class AdminCMDHandle(CommandHandler):
 
     def rm(self, stanza, *args):
         """剔除用户($rm nick1 nick2 nick3...)"""
+        #TODO 没有效果
         emails = [get_member(nick = n) for n in args]
         if emails >= 1:
             for e in emails:
@@ -427,11 +462,17 @@ def send_msg(stanza, stream, to_email, body):
     m=Message(
         to_jid=JID(to_email),
         stanza_type=typ,
-        thread = stanza.thread,
         body=body)
     stream.send(m)
 
-def send_all_msg(stanza, stream, body):
+def send_all_msg(stanza, stream, body, system=False):
+    """
+    发送所有消息
+    - `stanza` : 来源消息结
+    - `stream` : xmpp流 (added at 2012-10-29)
+    - `body`   : 发送消息主体
+    - `system` : 是否为系统消息 ( added at 2012-10-29)
+    """
     frm = stanza.from_jid
     nick = get_nick(frm)
     add_history(frm, 'all', body)
@@ -449,6 +490,7 @@ def send_all_msg(stanza, stream, body):
     elif body.strip() == 'help':
         send_command(stanza, stream, '$help')
         return
+    if system: nick = 'system'
     body = "[%s] %s" % (nick, body)
     [send_msg(stanza, stream, to, body) for to in tos]
 
