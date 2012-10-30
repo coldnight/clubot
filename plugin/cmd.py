@@ -205,8 +205,7 @@ class CommandHandler(object):
             r = edit_member(frm, nick = nick)
             if r:
                 body = "%s 更改昵称为 %s" % (oldnick, nick)
-                m = send_all_msg(stanza,self._stream, body)
-                m = send_all_msg(stanza, body, True)
+                m = send_all_msg(stanza,self._stream, body, True)
             else:
                 m = self._send_cmd_result(stanza, '昵称已存在')
         else:
