@@ -36,7 +36,7 @@ from pyxmpp2.interfaces import presence_stanza_handler, message_stanza_handler
 from pyxmpp2.ext.version import VersionProvider
 from settings import USER,PASSWORD, DEBUG, PIDPATH, LOGPATH, __version__, status
 from plugin.db import add_member, del_member, get_member, change_status, get_nick
-from plugin.db import empty_status
+from plugin.db import empty_status, get_members
 from plugin.cmd import send_all_msg, send_command
 
 
@@ -169,11 +169,16 @@ class BotChat(EventHandler, XMPPFeatureHandler):
     def handle_roster_received(self, event):
         p = Presence(status=status)
         self.client.stream.send(p)
-        ret = [x.jid for x in self.roster if x.subscription == 'both']
+        ret = [x.jid.bare() for x in self.roster if x.subscription == 'both']
         logging.info(' -- roster:{0}'.format(ret))
+        members = [m.get('email') for m in get_members()]
         for frm in ret:
             if not get_member(frm):
                 add_member(frm)
+
+        for m in members:
+            j = JID(m)
+            if j not in ret:del_member(j)
 
     @event_handler()
     def handle_all(self, event):
