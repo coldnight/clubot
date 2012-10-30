@@ -37,6 +37,7 @@ from db import get_history
 from db import logger
 from db import del_member
 from db import get_email
+from db import get_status
 from pyxmpp2.message import Message
 from pyxmpp2.jid import JID
 from pyxmpp2.presence import Presence
@@ -158,7 +159,10 @@ class CommandHandler(object):
             if email == femail:
                 r = '** ' + r
             elif is_online(email):
+                status = get_status(email)
+                status = status[0][1] if len(status) >= 1 else None
                 r = ' * ' + r
+                if status: r +=' ({0})'.format(status)
             else:
                 r = '  ' + r
             body.append(r)
@@ -254,7 +258,8 @@ class CommandHandler(object):
             p = Presence(from_jid = stanza.to_jid,
                          to_jid = JID(to),
                          stanza_type = 'subscribed')
-            return [p,p1]
+            self._stream.send(p1)
+            self._stream.send(p)
         else:
             return self.help(stanza, 'invite')
 
