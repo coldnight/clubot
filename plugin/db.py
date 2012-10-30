@@ -29,7 +29,7 @@ if DEBUG:
     hdl = logging.StreamHandler()
 else:
     hdl = logging.FileHandler(LOGPATH)
-fmt = logging.Formatter("(%(threadName)-2s) %(asctime)s %(levelname)s %(message)s")
+fmt = logging.Formatter("%(asctime)s %(levelname)s %(message)s")
 hdl.setFormatter(fmt)
 logger.addHandler(hdl)
 logger.setLevel(logging.INFO) # change to DEBUG for higher verbosity
