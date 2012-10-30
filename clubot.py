@@ -10,6 +10,9 @@
 #     * 修复自动下线和发送系统消息的bug
 #     * 修复用户离群的bug
 #     + 添加多线程处理消息
+# 2012-10-30 16:00
+#     + 添加连接之前清除状态表
+#
 
 
 import logging
@@ -33,6 +36,7 @@ from pyxmpp2.interfaces import presence_stanza_handler, message_stanza_handler
 from pyxmpp2.ext.version import VersionProvider
 from settings import USER,PASSWORD, DEBUG, PIDPATH, LOGPATH, __version__, status
 from plugin.db import add_member, del_member, get_member, change_status, get_nick
+from plugin.db import empty_status
 from plugin.cmd import send_all_msg, send_command
 
 
@@ -61,7 +65,7 @@ class BotChat(EventHandler, XMPPFeatureHandler):
         settings["password"] = PASSWORD
         version_provider = VersionProvider(settings)
         self.client = Client(my_jid, [self, version_provider], settings)
-        self.onlines = []
+        empty_status()
 
     def run(self):
         self.client.connect()

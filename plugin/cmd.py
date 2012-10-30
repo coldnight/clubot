@@ -21,6 +21,9 @@
 #   * 修复部分bug
 #   + 添加提交bug
 #
+# 2012-10-30 14:00
+#   * 修改history列表方式
+#
 
 
 import re
@@ -285,6 +288,9 @@ class CommandHandler(object):
     def bug(self, stanza, *args):
         """提交bug(请详细描述bug,比如使用什么命令,返回了什么)"""
         bugcontent = '\n'.join(args)
+        if not bugcontent:
+            self._send_cmd_result(stanza, u'请填写bug内容')
+            return
         email = stanza.from_jid.bare().as_string()
         username = get_nick(stanza.from_jid)
         url = "http://www.linuxzen.com/wp-comments-post.php"
@@ -293,22 +299,17 @@ class CommandHandler(object):
                     comment_parent=0, submit=u'发表评论', url='')
         get_url = lambda res:res.url
         try:
-            r = http_helper(url=url,param = param, callback=get_url)
+            http_helper(url=url,param = param, callback=get_url)
+            self._send_cmd_result(stanza, u'bug 提交成功,感谢支持!!')
         except:
-            r = ''
-        if r == url:
-            self._send_cmd_result(stanza, u'感谢支持!!bug 提交成功')
-        else:
-            self._send_cmd_result(stanza, u'感谢支持!!bug 提交失败,稍候再试')
+            self._send_cmd_result(stanza, u'bug 提交失败,稍候再试,感谢支持!!')
 
 
 
     def version(self, stanza, *args):
         """显示版本信息"""
-        author = [
-                    'cold night(wh_linux@126.com)',
-                    'eleven.i386(eleven.i386@gmail.com)',
-                 ]
+        author = ['cold night(wh_linux@126.com)',
+                    'eleven.i386(eleven.i386@gmail.com)',]
         body = "Version %s\nAuthors\n\t%s\n" % (__version__, '\n\t'.join(author))
         body += "\nhttps://github.com/coldnight/clubot"
         return self._send_cmd_result(stanza, body)
@@ -430,11 +431,7 @@ class AdminCMDHandle(CommandHandler):
         if emails >= 1:
             for e in emails:
                 jid = JID(e)
-                self._stream.send(
-                    Presence(
-                        to_jid = jid,
-                        stanza_type='unsubscribe'
-                        ))
+                self._stream.send(Presence(to_jid = jid, stanza_type='unsubscribe'))
                 del_member(jid)
         else:
             self.help(stanza, 'rm')

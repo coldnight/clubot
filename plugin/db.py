@@ -9,6 +9,10 @@
 #   + 增加对状态操作的函数
 # 2012-10-8  09:57
 #   + 增加日志
+# 2012-10-30 16:00
+#   * 修改不在线时删除记录
+#   + 增加清空状态表
+#
 
 import os
 import logging
@@ -17,6 +21,7 @@ from datetime import datetime
 from settings import DEBUG
 from settings import LOGPATH
 from settings import DB_NAME
+from settings import USER
 
 
 logger = logging.getLogger()
@@ -34,7 +39,13 @@ logger.setLevel(logging.INFO) # change to DEBUG for higher verbosity
 
 
 NOW = lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-get_email = lambda frm:frm.bare().as_string()
+
+def get_email(frm):
+    try:
+        result = frm.bare().as_string()
+    except:
+        result = frm
+    return result
 
 def _init_table():
     """
@@ -140,13 +151,20 @@ def get_status(email, resource = None):
 def change_status(frm, status, statustext):
     """改变用户状态"""
     email = get_email(frm)
+    if email == USER:return
     resource = frm.resource
     stat = get_status(email, resource)
-    if stat:
-        sql = 'update status set status=?,statustext=? where email=? and resource=?'
-    else:
+    if stat and status==0:
+        sql = 'delete from status where email=? and resource=?'
+        param = (email, resource)
+    elif stat and status==1:
+        sql = 'update status set status=?, statustext=? where email=? and resource=?'
+        param = (status, statustext, email, resource)
+    elif not stat and  status==1:
         sql = 'insert into status(status, statustext,email, resource) VALUES(?,?,?,?)'
-    param = (status, statustext, email, resource)
+        param = (status, statustext, email, resource)
+    else:
+        return
     cursor, conn = get_cursor()
     cursor.execute(sql, param)
     conn.commit()
@@ -160,6 +178,14 @@ def is_online(email):
     cursor.execute(sql,(email,))
     r = True if cursor.fetchall() else False
     return r
+
+def empty_status():
+    sql = 'delete from status;'
+    cursor, conn = get_cursor()
+    cursor.execute(sql)
+    conn.commit()
+    cursor.close()
+    conn.close()
 
 now = datetime.now()
 def add_member(frm):
@@ -306,17 +332,28 @@ def get_history(sef, frm = None, index = 1,  size = 10):
         t['id'], t['frm'], t['to'], t['content'], t['date'] = r
         fr = format(t)
         result.append(fr)
+    result.reverse()
     return '\n'.join(result)
+
+
+
+def get_date(date):
+    date = datetime.strptime(date, '%Y-%m-%d %H:%M:%S.%f')
+    nowdate = datetime.now().date()
+    dstdate = date.date()
+    if nowdate == dstdate:
+        return date.strftime("%H:%M:%S")
+    else:
+        return date.strftime("%Y-%m-%d %H:%M:%S")
 
 
 def format(values):
     import string
-    t = string.Template("""
-    id      : $id
-    from    : $frm
-    to      : $to
-    content : $content
-    date    : $date
-"""
-        )
+    t = string.Template("""$date [$nick] $content""")
+    values['nick'] = get_nick(values.get('frm'))
+    if values['to']!='all':
+        values['nick'] += u' 悄悄对你说'
+
+    values['date'] = get_date(values['date'])
+
     return t.substitute(values)
