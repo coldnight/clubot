@@ -19,9 +19,9 @@ import logging
 import sys, os
 import signal
 import subprocess
-import getpass
 import threading
 
+from functools import partial
 
 from pyxmpp2.jid import JID
 from pyxmpp2.message import Message
@@ -59,11 +59,11 @@ class BotChat(EventHandler, XMPPFeatureHandler):
                             "tls_verify_peer": False,
                             "starttls": True,
                             "ipv6":False,
-                            "delayed_call":True
                             })
 
         settings["password"] = PASSWORD
         version_provider = VersionProvider(settings)
+        self.do_quit = False
         self.client = Client(my_jid, [self, version_provider], settings)
         empty_status()
 
@@ -74,8 +74,10 @@ class BotChat(EventHandler, XMPPFeatureHandler):
         logging.info(u"Looping")
 
     def disconnect(self):
+        self.do_quit = True
         self.client.disconnect()
         self.client.run(timeout = 2)
+
 
     @presence_stanza_handler("subscribe")
     def handle_presence_subscribe(self, stanza):
@@ -153,7 +155,13 @@ class BotChat(EventHandler, XMPPFeatureHandler):
 
     @event_handler(DisconnectedEvent)
     def handle_disconnected(self, event):
-        return QUIT
+        if self.do_quit:
+            return QUIT
+        else:
+            logging.warn('Reconnect...')
+            PID = int(open(PIDPATH, 'r').read())
+            os.kill(PID, 1)
+            return True
 
 
     @property
@@ -190,13 +198,9 @@ def daemon():
 
 
 def main():
-    global PASSWORD
-    if not PASSWORD and args.passwd== 'encrypt':
-        PASSWORD = getpass.unix_getpass()
-    elif not PASSWORD and args.passwd== 'plain':
-        PASSWORD = raw_input("Password: ")
-    logging.basicConfig(level=logging.INFO)
-
+    if not PASSWORD:
+        print u'Error:Please write the password in the settings.py or with -p option'
+        return
     if DEBUG:
         handler = logging.StreamHandler()
         level = logging.DEBUG
@@ -253,16 +257,13 @@ def main():
 
 def restart(signum, stack):
     logging.info('Restart...')
-    pwd = subprocess.Popen('echo %s' % PASSWORD, stdin =subprocess.PIPE,
-                           stdout = subprocess.PIPE, stderr = subprocess.PIPE,
-                           shell = True)
-    subprocess.Popen(r'python %s --plain&& kill -9 %d'% (
-                                                       os.path.split(__file__)[1],
-                                                        PID),
-                     stdin = pwd.stdout, stdout = subprocess.PIPE,
-                     stderr = subprocess.PIPE, shell = True).communicate(pwd.out.read())
+    PID = int(open(PIDPATH, 'r').read())
+    subprocess.Popen(r'python {0} && kill -9 {1}'.format(os.path.split(__file__)[1],PID),
+                     stdin = subprocess.PIPE, stdout = subprocess.PIPE,
+                     stderr = subprocess.PIPE, shell = True)
 
 signal.signal(signal.SIGHUP, restart)
+
 
 if __name__ == '__main__':
     import argparse
@@ -273,9 +274,6 @@ if __name__ == '__main__':
     parser.add_argument('--stop', action = 'store_const', dest = 'action',
                         const = 'stop', default='run',
                         help = 'Stop the bot')
-    parser.add_argument('--plain', action = 'store_const', dest = 'passwd',
-                        const = 'plain', default = 'encrypt',
-                        help = "Enter password by Plain Text")
     args = parser.parse_args()
     if args.action == 'run':
         main()
@@ -294,4 +292,4 @@ if __name__ == '__main__':
             logging.info("Stop the bot")
             os.kill(PID, 9)
         except Exception, e:
-            logging.error("Stop failed", e.errno, e.strerror)
+            logging.error("Stop failed lien:%d error:%s", e.errno, e.strerror)

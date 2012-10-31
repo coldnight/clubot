@@ -5,7 +5,8 @@
     需要安装pyxmpp2(dnspython)模块
     因少量的使用Linux shell命令,所以需要再win下运行需要对代码进行稍微的修改
 配置:
-    为了安全起见可以不填入密码,在运行时会提示输入密码
+    填入bot的帐号和密码,和相应的管理员信息,关闭DEBUG
+    必须再settings里填入密码,以便对断断开时重连
 运行:
     启动:
         python clubot.py
