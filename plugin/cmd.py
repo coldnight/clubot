@@ -46,6 +46,7 @@ from settings import __version__
 from settings import USER
 from settings import LOGPATH
 from settings import ADMINS
+from city import cityid
 
 
 
@@ -175,10 +176,12 @@ class CommandHandler(object):
         trans = Complex()
         return self._send_cmd_result(stanza, trans.trans([x for x in args]))
 
-    def tq(self, stanza, *args):
+    def _tq(self, stanza, *args):
         """指定城市获取天气, eg. $tq 广州"""
         tq = Complex()
-        return self._send_cmd_result(stanza, tq.tq(''.join([x for x in args])))
+        body = tq.tq(''.join([x for x in args]))
+        self._send_cmd_result(stanza, body)
+        send_all_msg(stanza, self._stream, body)
 
     def msgto(self, stanza, *args):
         """单独给某用户发消息 eg $msgto nick hello(给nick发送hello) 也可以使用@<nick> 消息"""
@@ -189,7 +192,7 @@ class CommandHandler(object):
             if not receiver:
                 m  = self._send_cmd_result(stanza, "%s 用户不存在" % nick)
             else:
-                m = send_to_msg(stanza,self._stream, receiver, body)
+                m = send_to_msg(stanza, self._stream, receiver, body)
         else:
             m = self.help(stanza, 'mgsto')
 
@@ -205,14 +208,12 @@ class CommandHandler(object):
             r = edit_member(frm, nick = nick)
             if r:
                 body = "%s 更改昵称为 %s" % (oldnick, nick)
-                m = send_all_msg(stanza,self._stream, body, True)
+                send_all_msg(stanza,self._stream, body, True)
+                self._send_cmd_result(stanza, u'你的现在的已经已经更改为 {0}'.format(nick))
             else:
-                m = self._send_cmd_result(stanza, '昵称已存在')
+                self._send_cmd_result(stanza, '昵称已存在')
         else:
-            m = self.help(stanza, 'nick')
-
-
-        return m
+            self.help(stanza, 'nick')
 
 
     def code(self, stanza, *args):
@@ -399,7 +400,8 @@ class CommandHandler(object):
             m =getattr(self, c)(stanza, *args)
         except Exception as e:
             logger.warning(e.message)
-            m = self._send_cmd_result(stanza, e.message)
+            body = u'{0} run command {1} happend an error: {2}'.format(get_nick(email), c, e.message)
+            [send_to_msg(stanza, self._stream, admin, body) for admin in ADMINS]
 
         return m
 
@@ -459,10 +461,7 @@ def send_msg(stanza, stream, to_email, body):
     typ = stanza.stanza_type
     if typ not in ['normal', 'chat', 'groupchat', 'headline']:
         typ = 'normal'
-    m=Message(
-        to_jid=JID(to_email),
-        stanza_type=typ,
-        body=body)
+    m=Message(to_jid=JID(to_email),stanza_type=typ,body=body)
     stream.send(m)
 
 def send_all_msg(stanza, stream, body, system=False):
@@ -476,6 +475,9 @@ def send_all_msg(stanza, stream, body, system=False):
     frm = stanza.from_jid
     nick = get_nick(frm)
     add_history(frm, 'all', body)
+    if cityid(body.strip()):
+        send_command(stanza, stream, '$_tq {0}'.format(body))
+        return
     tos = get_members(frm)
     if '@' in body:
         r = re.findall(r'@<(.*?)>', body)

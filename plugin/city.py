@@ -4,10 +4,9 @@
 #中央天气预报
 #所有城市对应查询ID
 
-def cityid(key):   
-
+def cityid(key):
+    key = key.decode('utf-8').encode('utf-8')
     cityid = {
-    
         "北京":"101010100",
         "海淀":"101010200",
         "朝阳":"101010300",
@@ -2573,4 +2572,4 @@ def cityid(key):
         "花莲":"101340405",
         "云林":"101340406"
     }
-    return cityid[key]
+    return cityid.get(key,None)

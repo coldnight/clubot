@@ -21,7 +21,6 @@ import signal
 import subprocess
 import threading
 
-from functools import partial
 
 from pyxmpp2.jid import JID
 from pyxmpp2.message import Message
@@ -143,7 +142,7 @@ class BotChat(EventHandler, XMPPFeatureHandler):
         name = stanza.from_jid.bare().as_string()
         if not body:
             return True
-        if body.startswith('$'):
+        if body.startswith('$') or body.startswith('-'):
             t = threading.Thread(name=name+'runcmd', target=send_command, args=(stanza, self.stream, body))
         else:
             t = threading.Thread(name=name+'send_msg',target=send_all_msg, args=(stanza, self.stream, body))
