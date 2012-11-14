@@ -7,8 +7,7 @@
 # 2012-10-10 12:00
 #     * 使用pyxmpp2重写
 # 2012-10-29 14:25
-#     * 修复自动下线和发送系统消息的bug
-#     * 修复用户离群的bug
+#     * 修复自动下线和发送系统消息的bug #     * 修复用户离群的bug
 #     + 添加多线程处理消息
 # 2012-10-30 16:00
 #     + 添加连接之前清除状态表
@@ -22,6 +21,7 @@ import subprocess
 import threading
 
 
+import pyxmpp2.exceptions.StreamParseError
 from pyxmpp2.jid import JID
 from pyxmpp2.message import Message
 from pyxmpp2.presence import Presence
@@ -76,7 +76,15 @@ class BotChat(EventHandler, XMPPFeatureHandler):
         self.do_quit = True
         self.client.disconnect()
         self.client.run(timeout = 2)
-
+        self.client.disconnect()
+        while True:
+            try:
+                self.client.run(timeout = 2)
+            except pyxmpp2.exceptions.StreamParseError:
+                # we raise SystemExit to exit, expat says XML_ERROR_FINISHED
+                pass
+            else:
+                break
 
     @presence_stanza_handler("subscribe")
     def handle_presence_subscribe(self, stanza):
@@ -154,14 +162,7 @@ class BotChat(EventHandler, XMPPFeatureHandler):
 
     @event_handler(DisconnectedEvent)
     def handle_disconnected(self, event):
-        if self.do_quit:
-            return QUIT
-        else:
-            logging.warn('Reconnect...')
-            PID = int(open(PIDPATH, 'r').read())
-            os.kill(PID, 1)
-            return True
-
+        return QUIT
 
     @property
     def roster(self):
