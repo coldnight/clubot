@@ -27,16 +27,15 @@ from settings import USER
 logger = logging.getLogger()
 if DEBUG:
     hdl = logging.StreamHandler()
+    level = logging.DEBUG
 else:
+    level = logging.INFO
     hdl = logging.FileHandler(LOGPATH)
-fmt = logging.Formatter("%(asctime)s %(levelname)s %(message)s")
+fmt = logging.Formatter("%(asctime)s %(levelname)s [%(threadName)-10s] %(message)s")
 hdl.setFormatter(fmt)
-logger.addHandler(hdl)
+handler = hdl
+logger.addHandler(handler)
 logger.setLevel(logging.INFO) # change to DEBUG for higher verbosity
-
-
-
-
 
 NOW = lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 

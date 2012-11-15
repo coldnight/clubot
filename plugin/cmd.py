@@ -49,9 +49,6 @@ from settings import ADMINS
 from city import cityid
 
 
-
-
-
 def http_helper(url, param = None, callback=None):
     import urllib, urllib2
     if param:
@@ -96,7 +93,6 @@ def paste_code(poster, typ, codes):
     param = {'class':typ}
     param.update(poster=poster, code = codes, paste="发送")
     purl = "http://paste.linuxzen.com/"
-
     get_url = lambda res:res.url
     try:
         url = http_helper(purl, param, get_url)
@@ -133,7 +129,6 @@ def _add_commends(codes, typ, nick):
             \n%s\t使用gtalk添加%s\n" % (symbol, nick, symbol, symbol, USER)
     c += "#\n#\n####### Code Start #####################\n"
     codes.insert(0, c)
-
     return codes
 
 
@@ -143,8 +138,7 @@ class CommandHandler(object):
         生成命令
         命令对应着方法
         比如敲入 -list 则对应list方法
-        命令具有统一接收stanza固定参数和变参*args,
-        需要参数自行从kargs里提取
+        需要参数自行从kwargs里提取
         所有命令须返回Message/Presence的实例或实例列表
     """
     _cache = {}
@@ -156,7 +150,7 @@ class CommandHandler(object):
         body = []
         for m in members:
             email = m.get('email')
-            r = '%s <%s>' % (m.get('nick'), m.get('email'))
+            r = '{0} <{1}>'.format(m.get('nick'), m.get('email'))
             if email == femail:
                 r = '** ' + r
             elif is_online(email):
@@ -171,10 +165,12 @@ class CommandHandler(object):
         body.insert(0, 'Pythoner Club 所有成员(** 表示你自己, * 表示在线):')
         return self._send_cmd_result(stanza, '\n'.join(body))
 
+
     def trans(self, stanza, *args):
         """中日英翻译,默认英-汉翻译,eg $trans zh-en 中文,$trans ja-zh 死ぬ行く"""
         trans = Complex()
         return self._send_cmd_result(stanza, trans.trans([x for x in args]))
+
 
     def _tq(self, stanza, *args):
         """指定城市获取天气, eg. $tq 广州"""
@@ -183,59 +179,52 @@ class CommandHandler(object):
         self._send_cmd_result(stanza, body)
         send_all_msg(stanza, self._stream, body)
 
+
     def msgto(self, stanza, *args):
         """单独给某用户发消息 eg $msgto nick hello(给nick发送hello) 也可以使用@<nick> 消息"""
-        if len(args) > 1:
-            nick = args[0]
-            receiver = get_member(nick = nick)
-            body = ' '.join(args[1:])
-            if not receiver:
-                m  = self._send_cmd_result(stanza, "%s 用户不存在" % nick)
-            else:
-                m = send_to_msg(stanza, self._stream, receiver, body)
+        #TODO Write check
+        if len(args) <= 1:
+            return self.help(stanza, 'msgto')
+        nick = args[0]
+        receiver = get_member(nick = nick)
+        body = ' '.join(args[1:])
+        if not receiver:
+            self._send_cmd_result(stanza, "%s 用户不存在" % nick)
         else:
-            m = self.help(stanza, 'mgsto')
-
-        return m
+            send_to_msg(stanza, self._stream, receiver, body)
 
 
     def nick(self, stanza, *args):
         """更改昵称 eg. $nick yournewnickname"""
-        if len(args) >= 1:
-            nick = ' '.join(args[0:])
-            frm = stanza.from_jid
-            oldnick = get_nick(frm)
-            r = edit_member(frm, nick = nick)
-            if r:
-                body = "%s 更改昵称为 %s" % (oldnick, nick)
-                send_all_msg(stanza,self._stream, body, True)
-                self._send_cmd_result(stanza, u'你的现在的已经已经更改为 {0}'.format(nick))
-            else:
-                self._send_cmd_result(stanza, '昵称已存在')
+        if len(args) <= 1:
+            return self.help(stanza, 'code')
+        nick = ' '.join(args[0:])
+        frm = stanza.from_jid
+        oldnick = get_nick(frm)
+        r = edit_member(frm, nick = nick)
+        if r:
+            body = "%s 更改昵称为 %s" % (oldnick, nick)
+            send_all_msg(stanza,self._stream, body, True)
+            self._send_cmd_result(stanza, u'你的现在的已经已经更改为 {0}'.format(nick))
         else:
-            self.help(stanza, 'nick')
+            self._send_cmd_result(stanza, '昵称已存在')
 
 
     def code(self, stanza, *args):
         """<type> <code> 贴代码,可以使用$codetypes查看允许的代码类型"""
-        if len(args) > 1:
-            nick = get_nick(stanza.from_jid)
-            typ = args[0]
-            codes = _add_commends(args[1:], typ, nick)
-            codes = ''.join(codes[0:2]) + ' '.join(codes[2:])
-            poster = "Pythoner Club: %s" % nick
-            r = paste_code(poster,typ, codes)
-            if r:
-                m = send_all_msg(stanza, self._stream, r)
-                mc = self._send_cmd_result(stanza, r)
-                m.append(mc)
-            else:
-                m = self._send_cmd_result(stanza, 'something wrong')
+        if len(args) <= 1:
+            return self.help(stanza, 'code')
+        nick = get_nick(stanza.from_jid)
+        typ = args[0]
+        codes = _add_commends(args[1:], typ, nick)
+        codes = ''.join(codes[0:2]) + ' '.join(codes[2:])
+        poster = "Pythoner Club: %s" % nick
+        r = paste_code(poster,typ, codes)
+        if r:
+            send_all_msg(stanza, self._stream, r)
+            self._send_cmd_result(stanza, r)
         else:
-            m = self.help(stanza, 'code')
-        return m
-
-
+            self._send_cmd_result(stanza, 'something wrong')
 
 
     def codetypes(self, stanza, *args):
@@ -252,25 +241,24 @@ class CommandHandler(object):
         """邀请好友加入 eg. $invite <yourfirendemail>"""
         if len(args) >= 1:
             to = args[0]
-            p1 = Presence(from_jid = stanza.to_jid,
-                         to_jid = JID(to),
+            p1 = Presence(from_jid = stanza.to_jid, to_jid = JID(to),
                          stanza_type = 'subscribe')
-            p = Presence(from_jid = stanza.to_jid,
-                         to_jid = JID(to),
+            p = Presence(from_jid = stanza.to_jid, to_jid = JID(to),
                          stanza_type = 'subscribed')
             self._stream.send(p1)
             self._stream.send(p)
         else:
             return self.help(stanza, 'invite')
 
+
     def help(self, stanza, *args):
         """显示帮助"""
         if args:
             func = self._get_cmd(args[0])
             if func:
-                body ="$%s : %s" % (args[0], func.__doc__)
+                body ="${0} : {1}".format(args[0], func.__doc__)
             else:
-                body = "$%s : command unknow" % args[0]
+                body = "${0} : command unknow" .format(args[0])
         else:
             body = []
             funcs = self._get_cmd()
@@ -279,23 +267,23 @@ class CommandHandler(object):
                 body.append(r)
             body = sorted(body, key=lambda k:k[1])
             body = '\n'.join(body)
-        return self._send_cmd_result(stanza, body)
+        self._send_cmd_result(stanza, body)
 
 
     def history(self, stanza, *args):
         """<from> <index> <size> 显示聊天历史"""
         sef = stanza.from_jid
         if args:
-            return self._send_cmd_result(stanza, get_history(sef, *args))
+            self._send_cmd_result(stanza, get_history(sef, *args))
         else:
-            return self._send_cmd_result(stanza, get_history(sef))
+            self._send_cmd_result(stanza, get_history(sef))
 
     def bug(self, stanza, *args):
         """提交bug(请详细描述bug,比如使用什么命令,返回了什么)"""
         bugcontent = '\n'.join(args)
         if not bugcontent:
-            self._send_cmd_result(stanza, u'请填写bug内容')
-            return
+            return self._send_cmd_result(stanza, u'请填写bug内容')
+
         email = stanza.from_jid.bare().as_string()
         username = get_nick(stanza.from_jid)
         url = "http://www.linuxzen.com/wp-comments-post.php"
@@ -320,8 +308,6 @@ class CommandHandler(object):
         return self._send_cmd_result(stanza, body)
 
 
-
-
     def _set_cache(self, key, data, expires = None):
         """设置缓存 expires(秒) 设置过期时间None为永不过期"""
         if expires:
@@ -331,7 +317,6 @@ class CommandHandler(object):
             self._cache[key]['time'] = time.time()
         else:
             self._cache[key]['data'] = data
-
 
 
     def _get_cache(self, key):
@@ -348,7 +333,6 @@ class CommandHandler(object):
             return self._cache[key].get('data')
 
 
-
     def _send_cmd_result(self, stanza, body):
         """返回命令结果"""
         frm = stanza.from_jid
@@ -358,10 +342,10 @@ class CommandHandler(object):
 
     def _get_cmd(self, name = None):
         if name:
-            r = getattr(self, name)
+            command = getattr(self, name)
         else:
-            r = [{'name':k, 'func':getattr(self, k)} for k in dir(self) if not k.startswith('_')]
-        return r
+            command = [{'name':k, 'func':getattr(self, k)} for k in dir(self) if not k.startswith('_')]
+        return command
 
 
     def __getattr__(self, name):
@@ -369,26 +353,14 @@ class CommandHandler(object):
 
 
     def _parse_args(self, cmd):
-        args = []
-        c = ''
         splitbody = cmd.split('\n')
         if len(splitbody) >= 2:
             cmdline = splitbody[0]
             body = '\n'.join(splitbody[1:])
         else:
-            if len(splitbody) == 1:
-                cmdline = splitbody[0]
-                body = None
-            else:
-                cmdline,body = splitbody
-
-        for i, v in enumerate(cmdline.split(' ')):
-            if i == 0:
-                c = v
-            else:
-                args.append(v)
-        if body:args.append(body)
-        return c, args
+            cmdline, body = splitbody if len(splitbody) > 1 else splitbody[0], None
+        cmdline = cmdline.split(' ')
+        return cmdline[0], cmdline[1:]
 
     def _run_cmd(self, stanza, stream, cmd):
         """获取命令"""
@@ -422,10 +394,7 @@ class AdminCMDHandle(CommandHandler):
         else:
             start = 1
             end = 10
-        if len(lines) > 10:
-            body = ''.join(lines[-end:-start])
-        else:
-            body = ''.join(lines)
+        body = ''.join(lines[-end:-start]) if len(lines) > 10 else ''.join(lines)
 
         return self._send_cmd_result(stanza, body)
 
@@ -434,13 +403,11 @@ class AdminCMDHandle(CommandHandler):
         """剔除用户($rm nick1 nick2 nick3...)"""
         #TODO 没有效果
         emails = [get_member(nick = n) for n in args]
-        if emails >= 1:
-            for e in emails:
-                jid = JID(e)
-                self._stream.send(Presence(to_jid = jid, stanza_type='unsubscribe'))
-                del_member(jid)
-        else:
-            self.help(stanza, 'rm')
+        if len(emails) < 1: return self.help(stanza, 'rm')
+        for e in emails:
+            jid = JID(e)
+            self._stream.send(Presence(to_jid = jid, stanza_type='unsubscribe'))
+            del_member(jid)
 
 
 run_cmd = CommandHandler()._run_cmd
@@ -449,6 +416,7 @@ admin_run_cmd = AdminCMDHandle()._run_cmd
 
 
 def send_command(stanza, stream, body):
+    logger.info(u"{0} send command: {1}".format(stanza.from_jid, body))
     cmd = body[1:]
     email = get_email(stanza.from_jid)
     if email in ADMINS:
@@ -473,25 +441,25 @@ def send_all_msg(stanza, stream, body, system=False):
     - `system` : 是否为系统消息 ( added at 2012-10-29)
     """
     frm = stanza.from_jid
+    logger.info(u"{0} send message: {1}".format(stanza.from_jid, body))
     nick = get_nick(frm)
     add_history(frm, 'all', body)
     if cityid(body.strip()):
-        send_command(stanza, stream, '$_tq {0}'.format(body))
-        return
+        return send_command(stanza, stream, '$_tq {0}'.format(body))
+
     tos = get_members(frm)
     if '@' in body:
         r = re.findall(r'@<(.*?)>', body)
         mem = [get_member(nick=n) for n in r if get_member(nick = n)]
-        if mem:
-            if body.startswith('@<'):
-                b = re.sub(r'^@<.*?>', '', body)
-                send_to_msg(stanza, stream, mem[0], b)
-                return
+        if mem and body.startswith('@<'):
+            b = re.sub(r'^@<.*?>', '', body)
+            return send_to_msg(stanza, stream, mem[0], b)
+        elif mem:
             b = '%s 提到了你说: %s' % (nick, body)
             [send_to_msg(stanza, stream, to, b) for to in mem]
     elif body.strip() == 'help':
-        send_command(stanza, stream, '$help')
-        return
+        return send_command(stanza, stream, '$help')
+
     if system: nick = 'system'
     body = "[%s] %s" % (nick, body)
     [send_msg(stanza, stream, to, body) for to in tos]

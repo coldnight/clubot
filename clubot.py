@@ -21,7 +21,7 @@ import subprocess
 import threading
 
 
-import pyxmpp2.exceptions.StreamParseError
+import pyxmpp2
 from pyxmpp2.jid import JID
 from pyxmpp2.message import Message
 from pyxmpp2.presence import Presence
@@ -33,9 +33,9 @@ from pyxmpp2.roster import RosterReceivedEvent
 from pyxmpp2.interfaces import XMPPFeatureHandler
 from pyxmpp2.interfaces import presence_stanza_handler, message_stanza_handler
 from pyxmpp2.ext.version import VersionProvider
-from settings import USER,PASSWORD, DEBUG, PIDPATH, LOGPATH, __version__, status
+from settings import USER,PASSWORD, DEBUG, PIDPATH, __version__, status
 from plugin.db import add_member, del_member, get_member, change_status, get_nick
-from plugin.db import empty_status, get_members
+from plugin.db import empty_status, get_members, handler, level
 from plugin.cmd import send_all_msg, send_command
 
 
@@ -145,20 +145,16 @@ class BotChat(EventHandler, XMPPFeatureHandler):
 
     @message_stanza_handler()
     def handle_message(self, stanza):
-        logging.info(u"{0} send message".format(stanza.from_jid))
         body = stanza.body
         name = stanza.from_jid.bare().as_string()
-        if not body:
-            return True
+        if not body: return True
         if body.startswith('$') or body.startswith('-'):
-            t = threading.Thread(name=name+'runcmd', target=send_command, args=(stanza, self.stream, body))
+            target, name = send_command, '{0}_run_cmd'.format(name)
         else:
-            t = threading.Thread(name=name+'send_msg',target=send_all_msg, args=(stanza, self.stream, body))
-
+            target, name = send_all_msg, '{0}_send_msg'.format(name)
+        t = threading.Thread(name=name,target=target, args=(stanza, self.stream, body))
         t.start()
         return True
-
-
 
     @event_handler(DisconnectedEvent)
     def handle_disconnected(self, event):
@@ -167,7 +163,6 @@ class BotChat(EventHandler, XMPPFeatureHandler):
     @property
     def roster(self):
         return self.client.roster
-
 
     @property
     def stream(self):
@@ -180,60 +175,43 @@ class BotChat(EventHandler, XMPPFeatureHandler):
         ret = [x.jid.bare() for x in self.roster if x.subscription == 'both']
         logging.info(' -- roster:{0}'.format(ret))
         members = [m.get('email') for m in get_members()]
-        for frm in ret:
-            if not get_member(frm):
-                add_member(frm)
-
-        for m in members:
-            j = JID(m)
-            if j not in ret:del_member(j)
+        [add_member(frm) for frm in ret if not get_member(frm)]
+        [del_member(JID(m)) for m in members if JID(m) not in ret]
 
     @event_handler()
     def handle_all(self, event):
         logging.info(u"-- {0}".format(event))
 
-def daemon():
-    #Write Daemon Here
-    print 'daemon'
+
+
+def fork_daemon():
+    try:
+        with open(PIDPATH, 'r') as f: os.kill(int(f.read()), 9)
+    except: pass
+    try:
+        pid = os.fork()
+        if pid > 0: sys.exit(0)
+    except OSError, e:
+        logging.error("Fork #1 failed: %d (%s)", e.errno, e.strerror)
+        sys.exit(1)
+    os.setsid()
+    os.umask(0)
+    try:
+        pid = os.fork()
+        if pid <=0: sys.exit(1)
+        logging.info("Daemon PID %d" , pid)
+        with open(PIDPATH, 'w') as f: f.write(str(pid))
+        #sys.exit(0)
+    except OSError, e:
+        logging.error("Daemon started failed: %d (%s)", e.errno, e.strerror)
+        os.exit(1)
 
 
 def main():
     if not PASSWORD:
         print u'Error:Please write the password in the settings.py or with -p option'
-        return
-    if DEBUG:
-        handler = logging.StreamHandler()
-        level = logging.DEBUG
-    else:
-        level = logging.INFO
-        handler = logging.FileHandler(LOGPATH)
-        try:
-            PID = int(open(PIDPATH, 'r').read())
-            os.kill(PID, 9)
-        except:
-            pass
-        try:
-            pid = os.fork()
-            if pid > 0:
-                sys.exit(0)
-        except OSError, e:
-            logging.error("Fork #1 failed: %d (%s)", e.errno, e.strerror)
-            sys.exit(1)
-
-        os.setsid()
-        os.umask(0)
-
-        try:
-            pid = os.fork()
-            if pid > 0:
-                logging.info("Daemon PID %d" , pid)
-                pf = open(PIDPATH, 'w')
-                pf.write(str(pid))
-                pf.close()
-                sys.exit(0)
-        except OSError, e:
-            logging.error("Daemon started failed: %d (%s)", e.errno, e.strerror)
-            os.exit(1)
+        sys.exit(2)
+    if not DEBUG: fork_daemon()
     handler.setLevel(level)
     for logger in ("pyxmpp2.IN", "pyxmpp2.OUT"):
         logger = logging.getLogger(logger)
@@ -242,17 +220,9 @@ def main():
         logger.propagate = False
     bot = BotChat()
     try:
-        #bot.run()
-        t = threading.Thread(name='run', target=bot.run)
-        t.run()
-        d = threading.Thread(name='daemon', target=daemon)
-        d.setDaemon(True)
-        d.run()
+        bot.run()
     except Exception as ex:
         logging.error(ex.message)
-
-
-
 
 
 def restart(signum, stack):
@@ -275,12 +245,10 @@ if __name__ == '__main__':
                         const = 'stop', default='run',
                         help = 'Stop the bot')
     args = parser.parse_args()
-    if args.action == 'run':
-        main()
+    if args.action == 'run': main()
     elif args.action == 'restart':
         try:
-            PID = int(open(PIDPATH, 'r').read())
-            os.kill(PID,1)
+            with open(PIDPATH, 'r') as f: os.kill(int(f.read()), 1)
         except Exception, e:
             logging.error('Restart failed %s: %s', e.errno, e.strerror)
             logging.info("Try start...")
@@ -288,8 +256,7 @@ if __name__ == '__main__':
             logging.info("done")
     elif args.action == 'stop':
         try:
-            PID = int(open(PIDPATH, 'r').read())
             logging.info("Stop the bot")
-            os.kill(PID, 9)
+            with open(PIDPATH, 'r') as f: os.kill(int(f.read()), 9)
         except Exception, e:
-            logging.error("Stop failed lien:%d error:%s", e.errno, e.strerror)
+            logging.error("Stop failed line:%d error:%s", e.errno, e.strerror)
