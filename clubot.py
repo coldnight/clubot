@@ -76,16 +76,8 @@ class BotChat(EventHandler, XMPPFeatureHandler):
     def disconnect(self):
         self.do_quit = True
         self.client.disconnect()
-        self.client.run(timeout = 2)
-        self.client.disconnect()
-        while True:
-            try:
-                self.run(timeout = 2)
-            except pyxmpp2.exceptions.StreamParseError:
-                # we raise SystemExit to exit, expat says XML_ERROR_FINISHED
-                pass
-            else:
-                break
+        logging.warning('reconnect....')
+        with open(PIDPATH, 'r') as f: os.kill(int(f.read()), 1)
 
     @presence_stanza_handler("subscribe")
     def handle_presence_subscribe(self, stanza):
@@ -185,34 +177,32 @@ class BotChat(EventHandler, XMPPFeatureHandler):
 
 
 
-def fork_daemon():
-    try:
-        with open(PIDPATH, 'r') as f: os.kill(int(f.read()), 9)
-    except: pass
-    try:
-        pid = os.fork()
-        if pid > 0: sys.exit(0)
-    except OSError, e:
-        logging.error("Fork #1 failed: %d (%s)", e.errno, e.strerror)
-        sys.exit(1)
-    os.setsid()
-    os.umask(0)
-    try:
-        pid = os.fork()
-        if pid <=0: sys.exit(1)
-        logging.info("Daemon PID %d" , pid)
-        with open(PIDPATH, 'w') as f: f.write(str(pid))
-        #sys.exit(0)
-    except OSError, e:
-        logging.error("Daemon started failed: %d (%s)", e.errno, e.strerror)
-        os.exit(1)
-
-
 def main():
     if not PASSWORD:
         print u'Error:Please write the password in the settings.py or with -p option'
         sys.exit(2)
-    if not DEBUG: fork_daemon()
+    if not DEBUG:
+        try:
+            with open(PIDPATH, 'r') as f: os.kill(int(f.read()), 9)
+        except: pass
+        try:
+            pid = os.fork()
+            if pid > 0: sys.exit(0)
+        except OSError, e:
+            logging.error("Fork #1 failed: %d (%s)", e.errno, e.strerror)
+            sys.exit(1)
+        os.setsid()
+        os.umask(0)
+        try:
+            pid = os.fork()
+            if pid > 0:
+                logging.info("Daemon PID %d" , pid)
+                with open(PIDPATH, 'w') as f: f.write(str(pid))
+                sys.exit(0)
+        except OSError, e:
+            logging.error("Daemon started failed: %d (%s)", e.errno, e.strerror)
+            os.exit(1)
+
     handler.setLevel(level)
     for logger in ("pyxmpp2.IN", "pyxmpp2.OUT"):
         logger = logging.getLogger(logger)
@@ -229,12 +219,13 @@ def main():
 def restart(signum, stack):
     logging.info('Restart...')
     PID = int(open(PIDPATH, 'r').read())
-    subprocess.Popen(r'python {0} && kill -9 {1}'.format(os.path.split(__file__)[1],PID),
-                     stdin = subprocess.PIPE, stdout = subprocess.PIPE,
+    pf = os.path.join(os.path.dirname(__file__), __file__)
+    cmd = r'kill -9 {0} && python {1} '.format(PID, pf)
+    print cmd
+    subprocess.Popen(cmd, stdin = subprocess.PIPE, stdout = subprocess.PIPE,
                      stderr = subprocess.PIPE, shell = True)
 
 signal.signal(signal.SIGHUP, restart)
-
 
 if __name__ == '__main__':
     import argparse
