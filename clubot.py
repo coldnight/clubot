@@ -16,6 +16,7 @@
 
 import logging
 import sys, os
+import random
 import signal
 import subprocess
 import threading
@@ -79,7 +80,7 @@ class BotChat(EventHandler, XMPPFeatureHandler):
         self.client.disconnect()
         while True:
             try:
-                self.client.run(timeout = 2)
+                self.run(timeout = 2)
             except pyxmpp2.exceptions.StreamParseError:
                 # we raise SystemExit to exit, expat says XML_ERROR_FINISHED
                 pass
@@ -149,9 +150,9 @@ class BotChat(EventHandler, XMPPFeatureHandler):
         name = stanza.from_jid.bare().as_string()
         if not body: return True
         if body.startswith('$') or body.startswith('-'):
-            target, name = send_command, '{0}_run_cmd'.format(name)
+            target, name = send_command, '{0}_run_cmd_{1}'.format(name, random.random())
         else:
-            target, name = send_all_msg, '{0}_send_msg'.format(name)
+            target, name = send_all_msg, '{0}_send_msg_{1}'.format(name, random.random())
         t = threading.Thread(name=name,target=target, args=(stanza, self.stream, body))
         t.start()
         return True

@@ -179,12 +179,14 @@ class CommandHandler(object):
         self._send_cmd_result(stanza, body)
         send_all_msg(stanza, self._stream, body)
 
+    def _ping(self, stanza, *args):
+        self._send_cmd_result(stanza, 'is ok, I am online')
+
 
     def msgto(self, stanza, *args):
         """单独给某用户发消息 eg $msgto nick hello(给nick发送hello) 也可以使用@<nick> 消息"""
-        #TODO Write check
-        if len(args) <= 1:
-            return self.help(stanza, 'msgto')
+        #TODO Write check online
+        if len(args) <= 1: return self.help(stanza, 'msgto')
         nick = args[0]
         receiver = get_member(nick = nick)
         body = ' '.join(args[1:])
@@ -196,8 +198,7 @@ class CommandHandler(object):
 
     def nick(self, stanza, *args):
         """更改昵称 eg. $nick yournewnickname"""
-        if len(args) <= 1:
-            return self.help(stanza, 'code')
+        if len(args) <= 1: return self.help(stanza, 'code')
         nick = ' '.join(args[0:])
         frm = stanza.from_jid
         oldnick = get_nick(frm)
@@ -212,8 +213,7 @@ class CommandHandler(object):
 
     def code(self, stanza, *args):
         """<type> <code> 贴代码,可以使用$codetypes查看允许的代码类型"""
-        if len(args) <= 1:
-            return self.help(stanza, 'code')
+        if len(args) <= 1: return self.help(stanza, 'code')
         nick = get_nick(stanza.from_jid)
         typ = args[0]
         codes = _add_commends(args[1:], typ, nick)
@@ -239,16 +239,15 @@ class CommandHandler(object):
 
     def invite(self, stanza, *args):
         """邀请好友加入 eg. $invite <yourfirendemail>"""
-        if len(args) >= 1:
-            to = args[0]
-            p1 = Presence(from_jid = stanza.to_jid, to_jid = JID(to),
-                         stanza_type = 'subscribe')
-            p = Presence(from_jid = stanza.to_jid, to_jid = JID(to),
-                         stanza_type = 'subscribed')
-            self._stream.send(p1)
-            self._stream.send(p)
-        else:
-            return self.help(stanza, 'invite')
+        if len(args) <= 1:return self.help(stanza, 'invite')
+        to = args[0]
+        p1 = Presence(from_jid = stanza.to_jid, to_jid = JID(to),
+                      stanza_type = 'subscribe')
+        p = Presence(from_jid = stanza.to_jid, to_jid = JID(to),
+                     stanza_type = 'subscribed')
+        self._stream.send(p1)
+        self._stream.send(p)
+
 
 
     def help(self, stanza, *args):
@@ -271,7 +270,7 @@ class CommandHandler(object):
 
 
     def history(self, stanza, *args):
-        """<from> <index> <size> 显示聊天历史"""
+        """显示聊天历史"""
         sef = stanza.from_jid
         if args:
             self._send_cmd_result(stanza, get_history(sef, *args))
@@ -281,8 +280,7 @@ class CommandHandler(object):
     def bug(self, stanza, *args):
         """提交bug(请详细描述bug,比如使用什么命令,返回了什么)"""
         bugcontent = '\n'.join(args)
-        if not bugcontent:
-            return self._send_cmd_result(stanza, u'请填写bug内容')
+        if not bugcontent: return self._send_cmd_result(stanza, u'请填写bug内容')
 
         email = stanza.from_jid.bare().as_string()
         username = get_nick(stanza.from_jid)
@@ -296,7 +294,6 @@ class CommandHandler(object):
             self._send_cmd_result(stanza, u'bug 提交成功,感谢支持!!')
         except:
             self._send_cmd_result(stanza, u'bug 提交失败,稍候再试,感谢支持!!')
-
 
 
     def version(self, stanza, *args):
@@ -414,7 +411,6 @@ run_cmd = CommandHandler()._run_cmd
 admin_run_cmd = AdminCMDHandle()._run_cmd
 
 
-
 def send_command(stanza, stream, body):
     logger.info(u"{0} send command: {1}".format(stanza.from_jid, body))
     cmd = body[1:]
@@ -432,6 +428,18 @@ def send_msg(stanza, stream, to_email, body):
     m=Message(to_jid=JID(to_email),stanza_type=typ,body=body)
     stream.send(m)
 
+
+def send_at_msg(stanza, stream, body, nick):
+    """发送@消息"""
+    r = re.findall(r'@<(.*?)>', body)
+    mem = [get_member(nick=n) for n in r if get_member(nick = n)]
+    if mem and body.startswith('@<'):
+        b = re.sub(r'^@<.*?>', '', body)
+        return send_to_msg(stanza, stream, mem[0], b)
+    elif mem:
+        b = '%s 提到了你说: %s' % (nick, body)
+        [send_to_msg(stanza, stream, to, b) for to in mem]
+
 def send_all_msg(stanza, stream, body, system=False):
     """
     发送所有消息
@@ -441,27 +449,18 @@ def send_all_msg(stanza, stream, body, system=False):
     - `system` : 是否为系统消息 ( added at 2012-10-29)
     """
     frm = stanza.from_jid
-    logger.info(u"{0} send message: {1}".format(stanza.from_jid, body))
     nick = get_nick(frm)
-    add_history(frm, 'all', body)
-    if cityid(body.strip()):
-        return send_command(stanza, stream, '$_tq {0}'.format(body))
-
     tos = get_members(frm)
+    add_history(frm, 'all', body)
+    logger.info(u"{0} send message: {1}".format(stanza.from_jid, body))
+    if cityid(body.strip()): return send_command(stanza, stream, '$_tq {0}'.format(body))
     if '@' in body:
-        r = re.findall(r'@<(.*?)>', body)
-        mem = [get_member(nick=n) for n in r if get_member(nick = n)]
-        if mem and body.startswith('@<'):
-            b = re.sub(r'^@<.*?>', '', body)
-            return send_to_msg(stanza, stream, mem[0], b)
-        elif mem:
-            b = '%s 提到了你说: %s' % (nick, body)
-            [send_to_msg(stanza, stream, to, b) for to in mem]
+        send_at_msg(stanza, stream, body, nick)
     elif body.strip() == 'help':
         return send_command(stanza, stream, '$help')
-
-    if system: nick = 'system'
-    body = "[%s] %s" % (nick, body)
+    elif body.strip() == 'ping':
+        return send_command(stanza, stream, '$_ping')
+    body = "{0}".format(body) if system else "[%s] %s" % (nick, body)
     [send_msg(stanza, stream, to, body) for to in tos]
 
 
