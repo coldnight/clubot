@@ -7,10 +7,13 @@
 # 2012-10-10 12:00
 #     * 使用pyxmpp2重写
 # 2012-10-29 14:25
-#     * 修复自动下线和发送系统消息的bug #     * 修复用户离群的bug
+#     * 修复自动下线和发送系统消息的bug
+#     * 修复用户离群的bug
 #     + 添加多线程处理消息
 # 2012-10-30 16:00
 #     + 添加连接之前清除状态表
+# 2012-11-19 14:00
+#     * 修复断开自动重启
 #
 
 
@@ -21,8 +24,6 @@ import signal
 import subprocess
 import threading
 
-
-import pyxmpp2
 from pyxmpp2.jid import JID
 from pyxmpp2.message import Message
 from pyxmpp2.presence import Presence
