@@ -9,15 +9,20 @@
 # 2012-10-29 14:25
 #     * 修复自动下线和发送系统消息的bug
 #     * 修复用户离群的bug
+#     + 添加多线程处理消息
+# 2012-10-30 16:00
+#     + 添加连接之前清除状态表
+# 2012-11-19 14:00
+#     * 修复断开自动重启
+#
 
 
 import logging
 import sys, os
+import random
 import signal
 import subprocess
-import getpass
 import threading
-
 
 from pyxmpp2.jid import JID
 from pyxmpp2.message import Message
@@ -30,8 +35,9 @@ from pyxmpp2.roster import RosterReceivedEvent
 from pyxmpp2.interfaces import XMPPFeatureHandler
 from pyxmpp2.interfaces import presence_stanza_handler, message_stanza_handler
 from pyxmpp2.ext.version import VersionProvider
-from settings import USER,PASSWORD, DEBUG, PIDPATH, LOGPATH, __version__, status
+from settings import USER,PASSWORD, DEBUG, PIDPATH, __version__, status
 from plugin.db import add_member, del_member, get_member, change_status, get_nick
+from plugin.db import empty_status, get_members, handler, level
 from plugin.cmd import send_all_msg, send_command
 
 
@@ -54,13 +60,13 @@ class BotChat(EventHandler, XMPPFeatureHandler):
                             "tls_verify_peer": False,
                             "starttls": True,
                             "ipv6":False,
-                            "delayed_call":True
                             })
 
         settings["password"] = PASSWORD
         version_provider = VersionProvider(settings)
+        self.do_quit = False
         self.client = Client(my_jid, [self, version_provider], settings)
-        self.onlines = []
+        empty_status()
 
     def run(self):
         self.client.connect()
@@ -69,8 +75,10 @@ class BotChat(EventHandler, XMPPFeatureHandler):
         logging.info(u"Looping")
 
     def disconnect(self):
+        self.do_quit = True
         self.client.disconnect()
-        self.client.run(timeout = 2)
+        logging.warning('reconnect....')
+        with open(PIDPATH, 'r') as f: os.kill(int(f.read()), 1)
 
     @presence_stanza_handler("subscribe")
     def handle_presence_subscribe(self, stanza):
@@ -80,7 +88,7 @@ class BotChat(EventHandler, XMPPFeatureHandler):
         message = Message(to_jid = frm, body = welcome(frm), stanza_type=stanza.stanza_type)
         add_member(frm)
         r =[stanza.make_accept_response(), presence, message]
-        r.extend(send_all_msg(stanza, new_member(frm), True))
+        send_all_msg(stanza, self.stream, new_member(frm), True)
         return r
 
     @presence_stanza_handler("subscribed")
@@ -93,7 +101,7 @@ class BotChat(EventHandler, XMPPFeatureHandler):
         add_member(frm)
         r =[presence, message]
         add_member(frm)
-        r.extend(send_all_msg(stanza, new_member(frm), True))
+        send_all_msg(stanza, self.stream, new_member(frm), True)
         return r
 
     @presence_stanza_handler("unsubscribe")
@@ -103,10 +111,9 @@ class BotChat(EventHandler, XMPPFeatureHandler):
         presence = Presence(to_jid = stanza.from_jid.bare(),
                                                     stanza_type = "unsubscribe")
         nick = get_nick(stanza.from_jid)
-        message = send_all_msg(stanza, u'{0} 离开群'.format(nick), True)
+        send_all_msg(stanza,self.stream, u'{0} 离开群'.format(nick), True)
         del_member(stanza.from_jid.bare())
         r =[stanza.make_accept_response(), presence]
-        r.extend(message)
         return r
 
     @presence_stanza_handler("unsubscribed")
@@ -132,85 +139,71 @@ class BotChat(EventHandler, XMPPFeatureHandler):
 
     @message_stanza_handler()
     def handle_message(self, stanza):
-        logging.info(u"{0} send message".format(stanza.from_jid))
         body = stanza.body
-        if not body:
-            return True
-        if body.startswith('$'):
-            msg = send_command(stanza, body)
+        name = stanza.from_jid.bare().as_string()
+        if not body: return True
+        if body.startswith('$') or body.startswith('-'):
+            target, name = send_command, '{0}_run_cmd_{1}'.format(name, random.random())
         else:
-            msg = send_all_msg(stanza, body)
-        return msg
+            target, name = send_all_msg, '{0}_send_msg_{1}'.format(name, random.random())
+        t = threading.Thread(name=name,target=target, args=(stanza, self.stream, body))
+        t.start()
+        return True
 
     @event_handler(DisconnectedEvent)
     def handle_disconnected(self, event):
         return QUIT
 
-
     @property
     def roster(self):
         return self.client.roster
+
+    @property
+    def stream(self):
+        return self.client.stream
 
     @event_handler(RosterReceivedEvent)
     def handle_roster_received(self, event):
         p = Presence(status=status)
         self.client.stream.send(p)
-        ret = [x.jid for x in self.roster if x.subscription == 'both']
+        ret = [x.jid.bare() for x in self.roster if x.subscription == 'both']
         logging.info(' -- roster:{0}'.format(ret))
-        for frm in ret:
-            if not get_member(frm):
-                add_member(frm)
+        members = [m.get('email') for m in get_members()]
+        [add_member(frm) for frm in ret if not get_member(frm)]
+        [del_member(JID(m)) for m in members if JID(m) not in ret]
 
     @event_handler()
     def handle_all(self, event):
         logging.info(u"-- {0}".format(event))
 
-def daemon():
-    #Write Daemon Here
-    print 'daemon'
 
 
 def main():
-    global PASSWORD
-    if not PASSWORD and args.passwd== 'encrypt':
-        PASSWORD = getpass.unix_getpass()
-    elif not PASSWORD and args.passwd== 'plain':
-        PASSWORD = raw_input("Password: ")
-    logging.basicConfig(level=logging.INFO)
-
-    if DEBUG:
-        handler = logging.StreamHandler()
-        level = logging.DEBUG
-    else:
-        level = logging.INFO
-        handler = logging.FileHandler(LOGPATH)
+    if not PASSWORD:
+        print u'Error:Please write the password in the settings.py or with -p option'
+        sys.exit(2)
+    if not DEBUG:
         try:
-            PID = int(open(PIDPATH, 'r').read())
-            os.kill(PID, 9)
-        except:
-            pass
+            with open(PIDPATH, 'r') as f: os.kill(int(f.read()), 9)
+        except: pass
         try:
             pid = os.fork()
-            if pid > 0:
-                sys.exit(0)
+            if pid > 0: sys.exit(0)
         except OSError, e:
             logging.error("Fork #1 failed: %d (%s)", e.errno, e.strerror)
             sys.exit(1)
-
         os.setsid()
         os.umask(0)
-
         try:
             pid = os.fork()
             if pid > 0:
                 logging.info("Daemon PID %d" , pid)
-                pf = open(PIDPATH, 'w')
-                pf.write(str(pid))
-                pf.close()
+                with open(PIDPATH, 'w') as f: f.write(str(pid))
                 sys.exit(0)
         except OSError, e:
             logging.error("Daemon started failed: %d (%s)", e.errno, e.strerror)
             os.exit(1)
+
     handler.setLevel(level)
     for logger in ("pyxmpp2.IN", "pyxmpp2.OUT"):
         logger = logging.getLogger(logger)
@@ -219,29 +212,19 @@ def main():
         logger.propagate = False
     bot = BotChat()
     try:
-        #bot.run()
-        t = threading.Thread(name='run', target=bot.run)
-        t.start()
-        d = threading.Thread(name='daemon', target=daemon)
-        d.setDaemon(True)
-        d.run()
+        bot.run()
     except Exception as ex:
         logging.error(ex.message)
 
 
-
-
-
 def restart(signum, stack):
     logging.info('Restart...')
-    pwd = subprocess.Popen('echo %s' % PASSWORD, stdin =subprocess.PIPE,
-                           stdout = subprocess.PIPE, stderr = subprocess.PIPE,
-                           shell = True)
-    subprocess.Popen(r'python %s --plain&& kill -9 %d'% (
-                                                       os.path.split(__file__)[1],
-                                                        PID),
-                     stdin = pwd.stdout, stdout = subprocess.PIPE,
-                     stderr = subprocess.PIPE, shell = True).communicate(pwd.out.read())
+    PID = int(open(PIDPATH, 'r').read())
+    pf = os.path.join(os.path.dirname(__file__), __file__)
+    cmd = r'kill -9 {0} && python {1} '.format(PID, pf)
+    print cmd
+    subprocess.Popen(cmd, stdin = subprocess.PIPE, stdout = subprocess.PIPE,
+                     stderr = subprocess.PIPE, shell = True)
 
 signal.signal(signal.SIGHUP, restart)
 
@@ -254,16 +237,11 @@ if __name__ == '__main__':
     parser.add_argument('--stop', action = 'store_const', dest = 'action',
                         const = 'stop', default='run',
                         help = 'Stop the bot')
-    parser.add_argument('--plain', action = 'store_const', dest = 'passwd',
-                        const = 'plain', default = 'encrypt',
-                        help = "Enter password by Plain Text")
     args = parser.parse_args()
-    if args.action == 'run':
-        main()
+    if args.action == 'run': main()
     elif args.action == 'restart':
         try:
-            PID = int(open(PIDPATH, 'r').read())
-            os.kill(PID,1)
+            with open(PIDPATH, 'r') as f: os.kill(int(f.read()), 1)
         except Exception, e:
             logging.error('Restart failed %s: %s', e.errno, e.strerror)
             logging.info("Try start...")
@@ -271,8 +249,7 @@ if __name__ == '__main__':
             logging.info("done")
     elif args.action == 'stop':
         try:
-            PID = int(open(PIDPATH, 'r').read())
             logging.info("Stop the bot")
-            os.kill(PID, 9)
+            with open(PIDPATH, 'r') as f: os.kill(int(f.read()), 9)
         except Exception, e:
-            logging.error("Stop failed", e.errno, e.strerror)
+            logging.error("Stop failed line:%d error:%s", e.errno, e.strerror)
