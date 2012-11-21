@@ -198,7 +198,7 @@ class CommandHandler(object):
 
     def nick(self, stanza, *args):
         """更改昵称 eg. $nick yournewnickname"""
-        if len(args) <= 1: return self.help(stanza, 'code')
+        if len(args) < 1: return self.help(stanza, 'nick')
         nick = ' '.join(args[0:])
         frm = stanza.from_jid
         oldnick = get_nick(frm)
