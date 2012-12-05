@@ -35,7 +35,7 @@ from pyxmpp2.roster import RosterReceivedEvent
 from pyxmpp2.interfaces import XMPPFeatureHandler
 from pyxmpp2.interfaces import presence_stanza_handler, message_stanza_handler
 from pyxmpp2.ext.version import VersionProvider
-from settings import USER,PASSWORD, DEBUG, PIDPATH, __version__, status
+from settings import USER,PASSWORD, DEBUG, PIDPATH, __version__, status, IMPORT
 from plugin.db import add_member, del_member, get_member, change_status, get_nick
 from plugin.db import empty_status, get_members, handler, level
 from plugin.cmd import send_all_msg, send_command
@@ -54,6 +54,7 @@ def new_member(frm):
 class BotChat(EventHandler, XMPPFeatureHandler):
     def __init__(self):
         my_jid = JID(USER+'/Bot')
+        self.my_jid = my_jid
         settings = XMPPSettings({
                             "software_name": "Clubot",
                             "software_version": __version__,
@@ -147,12 +148,13 @@ class BotChat(EventHandler, XMPPFeatureHandler):
         else:
             target, name = send_all_msg, '{0}_send_msg_{1}'.format(name, random.random())
         t = threading.Thread(name=name,target=target, args=(stanza, self.stream, body))
+        t.setDaemon(True)
         t.start()
         return True
 
     @event_handler(DisconnectedEvent)
     def handle_disconnected(self, event):
-        return QUIT
+       self.run()
 
     @property
     def roster(self):
@@ -162,6 +164,14 @@ class BotChat(EventHandler, XMPPFeatureHandler):
     def stream(self):
         return self.client.stream
 
+    def invite_member(self, jid):
+        p1 = Presence(from_jid = self.my_jid, to_jid = jid,
+                      stanza_type = 'subscribe')
+        p = Presence(from_jid = self.my_jid, to_jid = jid,
+                     stanza_type = 'subscribed')
+        self.stream.send(p)
+        self.stream.send(p1)
+
     @event_handler(RosterReceivedEvent)
     def handle_roster_received(self, event):
         p = Presence(status=status)
@@ -170,7 +180,10 @@ class BotChat(EventHandler, XMPPFeatureHandler):
         logging.info(' -- roster:{0}'.format(ret))
         members = [m.get('email') for m in get_members()]
         [add_member(frm) for frm in ret if not get_member(frm)]
-        [del_member(JID(m)) for m in members if JID(m) not in ret]
+        if IMPORT:
+            [self.invite_member(JID(m)) for m in members if JID(m) not in ret]
+        else:
+            [del_member(JID(m)) for m in members if JID(m) not in ret]
 
     @event_handler()
     def handle_all(self, event):
@@ -180,7 +193,7 @@ class BotChat(EventHandler, XMPPFeatureHandler):
 
 def main():
     if not PASSWORD:
-        print u'Error:Please write the password in the settings.py or with -p option'
+        print u'Error:Please write the password in the settings.py'
         sys.exit(2)
     if not DEBUG:
         try:

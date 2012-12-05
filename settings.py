@@ -10,11 +10,13 @@ sys.setdefaultencoding('utf-8')
 
 ADMINS = ['coldnight.linux@gmail.com']
 
-USER = 'blog.linuxzen@gmail.com'
+USER = ''
 
-PASSWORD = ''
+PASSWORD = ""
 
 DEBUG = False
+
+IMPORT = True     # 如果数据库中有而角色中无则添加好友
 
 __version__ = '0.1.5 alpha-threading'
 
