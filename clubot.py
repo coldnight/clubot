@@ -165,6 +165,7 @@ class BotChat(EventHandler, XMPPFeatureHandler):
         return self.client.stream
 
     def invite_member(self, jid):
+        logging.info('invite {0}'.format(jid))
         p1 = Presence(from_jid = self.my_jid, to_jid = jid,
                       stanza_type = 'subscribe')
         p = Presence(from_jid = self.my_jid, to_jid = jid,
