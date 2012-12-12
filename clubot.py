@@ -29,6 +29,7 @@ from pyxmpp2.message import Message
 from pyxmpp2.presence import Presence
 from pyxmpp2.client import Client
 from pyxmpp2.settings import XMPPSettings
+from pyxmpp2.stanza import Stanza
 from pyxmpp2.interfaces import EventHandler, event_handler, QUIT
 from pyxmpp2.streamevents import DisconnectedEvent
 from pyxmpp2.roster import RosterReceivedEvent
@@ -58,6 +59,7 @@ class BotChat(EventHandler, XMPPFeatureHandler):
         settings = XMPPSettings({
                             "software_name": "Clubot",
                             "software_version": __version__,
+                            "software_os": "Linux",
                             "tls_verify_peer": False,
                             "starttls": True,
                             "ipv6":False,
@@ -67,6 +69,7 @@ class BotChat(EventHandler, XMPPFeatureHandler):
         version_provider = VersionProvider(settings)
         self.do_quit = False
         self.client = Client(my_jid, [self, version_provider], settings)
+        self.stanza = Stanza(
         empty_status()
 
     def run(self):
@@ -154,7 +157,7 @@ class BotChat(EventHandler, XMPPFeatureHandler):
 
     @event_handler(DisconnectedEvent)
     def handle_disconnected(self, event):
-       self.run()
+       main()
 
     @property
     def roster(self):
@@ -189,7 +192,18 @@ class BotChat(EventHandler, XMPPFeatureHandler):
     def handle_all(self, event):
         logging.info(u"-- {0}".format(event))
 
-
+    def send_msg(self, msg, to=None):
+        if to:
+            if isinstance(to, (list, tuple)):
+                tos = to
+            elif isinstance(to, (str, unicode)):
+                tos = [to]
+        else:
+            tos = get_members(self.my_jid)
+        msgs = [Message(to_jid=JID(to),
+                        stanza_type='normal',
+                        body=msg) for to in tos]
+        [self.stream.send(msg) for msg in msgs]
 
 def main():
     if not PASSWORD:
@@ -213,6 +227,9 @@ def main():
                 logging.info("Daemon PID %d" , pid)
                 with open(PIDPATH, 'w') as f: f.write(str(pid))
                 sys.exit(0)
+            else:
+                #TODO
+                pass
         except OSError, e:
             logging.error("Daemon started failed: %d (%s)", e.errno, e.strerror)
             os.exit(1)
