@@ -69,7 +69,6 @@ class BotChat(EventHandler, XMPPFeatureHandler):
         version_provider = VersionProvider(settings)
         self.do_quit = False
         self.client = Client(my_jid, [self, version_provider], settings)
-        self.stanza = Stanza(
         empty_status()
 
     def run(self):
