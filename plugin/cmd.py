@@ -27,7 +27,10 @@
 
 
 import re
+import sys
 import time
+import urllib, urllib2, json
+import traceback
 from db import get_members
 from db import get_nick, get_member
 from db import edit_member
@@ -50,7 +53,6 @@ from city import cityid
 
 
 def http_helper(url, param = None, callback=None):
-    import urllib, urllib2
     if param:
         data = urllib.urlencode(param)
         req =urllib2.Request(url,data)
@@ -65,6 +67,32 @@ def http_helper(url, param = None, callback=None):
         result =  res.read()
     return result
 
+def http_helper2(url, params, method = 'POST'):
+    """ http请求辅助函数 """
+    params = urllib.urlencode(params)
+    if method.lower() == 'post':
+        request = urllib2.Request(url, params)
+    elif method.lower() == 'get':
+        url += '?'+params
+        request = urllib2.Request(url)
+    else:
+        raise ValueError('method error')
+
+    response = urllib2.urlopen(request)
+    tmp = response.read()
+    result = json.loads(tmp)
+    return result
+
+def run_code(code):
+    CODERUN = "http://1.pyec.sinaapp.com/run"
+    result = http_helper2(CODERUN, dict(code=code))
+    status = result.get('status')
+    if status:
+        body = "执行成功:\n" + result.get('out')
+    else:
+        body = "执行失败:\n" + result.get('err')
+
+    return body
 
 def _get_code_types():
     """获取贴代码支持的类型"""
@@ -226,6 +254,16 @@ class CommandHandler(object):
         else:
             self._send_cmd_result(stanza, 'something wrong')
 
+    def py(self, stanza, *args):
+        """ 执行Python代码 """
+        if len(args) < 1: return self.help(stanza, 'py')
+        nick = get_nick(stanza.from_jid)
+        code = ' '.join(args)
+        result = run_code(code)
+        body = u'{0} 执行代码:\n{1}\n'.format(nick, code)
+        body += result
+        send_all_msg(stanza, self._stream, body, True)
+        self._send_cmd_result(stanza, result)
 
     def codetypes(self, stanza, *args):
         """返回有效的贴代码的类型"""
@@ -239,7 +277,7 @@ class CommandHandler(object):
 
     def invite(self, stanza, *args):
         """邀请好友加入 eg. $invite <yourfirendemail>"""
-        if len(args) <= 1:return self.help(stanza, 'invite')
+        if len(args) < 1:return self.help(stanza, 'invite')
         to = args[0]
         p1 = Presence(from_jid = stanza.to_jid, to_jid = JID(to),
                       stanza_type = 'subscribe')
@@ -247,8 +285,6 @@ class CommandHandler(object):
                      stanza_type = 'subscribed')
         self._stream.send(p1)
         self._stream.send(p)
-
-
 
     def help(self, stanza, *args):
         """显示帮助"""
@@ -352,11 +388,13 @@ class CommandHandler(object):
     def _parse_args(self, cmd):
         splitbody = cmd.split('\n')
         if len(splitbody) >= 2:
-            cmdline = splitbody[0]
-            body = '\n'.join(splitbody[1:])
+            cmdline = (splitbody[0], '\n'.join(splitbody[1:]))
         else:
-            cmdline, body = splitbody if len(splitbody) > 1 else splitbody[0], None
-        cmdline = cmdline.split(' ')
+            cmdline= splitbody
+        cmdline = list(cmdline)
+        tmp = cmdline[0].split(' ')
+        result = tmp + cmdline[1:]
+        cmdline = result
         return cmdline[0], cmdline[1:]
 
     def _run_cmd(self, stanza, stream, cmd):
@@ -371,6 +409,8 @@ class CommandHandler(object):
             logger.warning(e.message)
             body = u'{0} run command {1} happend an error: {2}'.format(get_nick(email), c, e.message)
             [send_to_msg(stanza, self._stream, admin, body) for admin in ADMINS]
+            traceback.print_exc(file=sys.stdout)
+            return
 
         return m
 
