@@ -20,6 +20,7 @@
 import logging
 import sys, os
 import random
+import time
 import signal
 import subprocess
 import threading
@@ -29,9 +30,8 @@ from pyxmpp2.message import Message
 from pyxmpp2.presence import Presence
 from pyxmpp2.client import Client
 from pyxmpp2.settings import XMPPSettings
-from pyxmpp2.stanza import Stanza
-from pyxmpp2.interfaces import EventHandler, event_handler, QUIT
-from pyxmpp2.streamevents import DisconnectedEvent
+from pyxmpp2.interfaces import EventHandler, event_handler
+from pyxmpp2.streamevents import DisconnectedEvent,ConnectedEvent
 from pyxmpp2.roster import RosterReceivedEvent
 from pyxmpp2.interfaces import XMPPFeatureHandler
 from pyxmpp2.interfaces import presence_stanza_handler, message_stanza_handler
@@ -68,7 +68,9 @@ class BotChat(EventHandler, XMPPFeatureHandler):
         settings["password"] = PASSWORD
         version_provider = VersionProvider(settings)
         self.do_quit = False
+        self.connected = False
         self.client = Client(my_jid, [self, version_provider], settings)
+        self.trytimes = 0
         empty_status()
 
     def run(self):
@@ -156,7 +158,12 @@ class BotChat(EventHandler, XMPPFeatureHandler):
 
     @event_handler(DisconnectedEvent)
     def handle_disconnected(self, event):
-       main()
+        self.connected = False
+
+    @event_handler(ConnectedEvent)
+    def handle_connected(self, event):
+        self.connected = True
+        self.trytimes = 0
 
     @property
     def roster(self):
@@ -241,10 +248,18 @@ def main():
         logger.addHandler(handler)
         logger.propagate = False
     bot = BotChat()
-    try:
-        bot.run()
-    except Exception as ex:
-        logging.error(ex.message)
+    while True:
+        try:
+            bot.run()
+            if not bot.connected:
+                bot.trytimes += 1
+                sleeptime = 10 * bot.trytimes
+                logger.info('Connect failed, will retry in {0}s of '
+                            '{1} times'.format(sleeptime, bot.trytimes))
+                time.sleep(sleeptime)
+        except Exception as ex:
+            bot.connected = False
+            logging.error(ex.message)
 
 
 def restart(signum, stack):
