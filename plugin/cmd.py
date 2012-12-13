@@ -191,7 +191,7 @@ class CommandHandler(object):
             body.append(r)
         body = sorted(body, key = lambda k:k[1], reverse=True)
         body.insert(0, 'Pythoner Club 所有成员(** 表示你自己, * 表示在线):')
-        return self._send_cmd_result(stanza, '\n'.join(body))
+        self._send_cmd_result(stanza, '\n'.join(body))
 
 
     def trans(self, stanza, *args):
