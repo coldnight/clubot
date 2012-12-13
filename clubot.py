@@ -70,6 +70,7 @@ class BotChat(EventHandler, XMPPFeatureHandler):
         self.do_quit = False
         self.connected = False
         self.client = Client(my_jid, [self, version_provider], settings)
+        self.trytimes = 0
         empty_status()
 
     def run(self):
@@ -162,6 +163,7 @@ class BotChat(EventHandler, XMPPFeatureHandler):
     @event_handler(ConnectedEvent)
     def handle_connected(self, event):
         self.connected = True
+        self.trytimes = 0
 
     @property
     def roster(self):
@@ -245,14 +247,18 @@ def main():
         logger.addHandler(handler)
         logger.propagate = False
     bot = BotChat()
-    try:
-        while True:
+    while True:
+        try:
             bot.run()
             if not bot.connected:
-                logger.info('Connected fail retry in 10s')
-                time.sleep(10)
-    except Exception as ex:
-        logging.error(ex.message)
+                bot.trytimes += 1
+                sleeptime = 10 * bot.trytimes
+                logger.info('Connect failed, will retry in {0}s of '
+                            '{1} times'.format(sleeptime, bot.trytimes))
+                time.sleep(sleeptime)
+        except Exception as ex:
+            bot.connected = False
+            logging.error(ex.message)
 
 
 def restart(signum, stack):
