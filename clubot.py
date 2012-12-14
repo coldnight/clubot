@@ -82,8 +82,6 @@ class BotChat(EventHandler, XMPPFeatureHandler):
     def disconnect(self):
         self.do_quit = True
         self.client.disconnect()
-        logging.warning('reconnect....')
-        with open(PIDPATH, 'r') as f: os.kill(int(f.read()), 1)
 
     @presence_stanza_handler("subscribe")
     def handle_presence_subscribe(self, stanza):
@@ -251,6 +249,7 @@ def main():
         try:
             bot.run()
             if not bot.connected:
+                bot.disconnect()
                 bot.trytimes += 1
                 sleeptime = 10 * bot.trytimes
                 logger.info('Connect failed, will retry in {0}s of '
