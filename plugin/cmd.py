@@ -96,7 +96,7 @@ def run_code(code):
 
 def _get_code_types():
     """获取贴代码支持的类型"""
-    purl = "http://paste.linuxzen.com/"
+    purl = "http://paste.linuxzen.com/paste"
     def handle(res):
         r = re.compile(r'<option\s+value="(.*?)".*?>(.*?)</option>')
         result = []
@@ -120,7 +120,7 @@ def _get_code_types():
 def paste_code(poster, typ, codes):
     param = {'class':typ}
     param.update(poster=poster, code = codes, paste="发送")
-    purl = "http://paste.linuxzen.com/"
+    purl = "http://paste.linuxzen.com/paste"
     get_url = lambda res:res.url
     try:
         url = http_helper(purl, param, get_url)
