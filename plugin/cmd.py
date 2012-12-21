@@ -33,8 +33,8 @@ import traceback
 
 from mysql import get_members, get_nick, get_member, edit_member, add_history
 from mysql import is_online, get_history, logger, del_member, get_email
-from mysql import get_status
-from settings import __version__, LOGPATH, ADMINS
+from mysql import get_status, change_status
+from settings import __version__, LOGPATH, ADMINS, USER, STATUS
 from util import http_helper, run_code, paste_code, add_commends
 from util import get_code_types, Complex
 from city import cityid
@@ -307,7 +307,7 @@ class CommandHandler(object):
 class AdminCMDHandle(CommandHandler):
     """管理员命令"""
     def log(self, stanza, *args):
-        """查看日志(-log <page> <size>)"""
+        """查看日志"""
         lf = open(LOGPATH)
         lines = lf.readlines()
         lines.append('\ntotal lines: %d' % len(lines))
@@ -326,7 +326,7 @@ class AdminCMDHandle(CommandHandler):
 
 
     def rm(self, stanza, *args):
-        """剔除用户(-rm nick1 nick2 nick3...)"""
+        """剔除用户"""
         #XXX 没有效果
         emails = [get_member(nick = n) for n in args]
         if len(emails) < 1: return self.help(stanza, 'rm')
@@ -334,6 +334,16 @@ class AdminCMDHandle(CommandHandler):
             jid = JID(e)
             self._stream.send(Presence(to_jid = jid, stanza_type='unsubscribe'))
             del_member(jid)
+
+    def cs(self, stanza, *args):
+        """ 更改状态 """
+        if args:
+            status = ' '.join(args)
+        else:
+            status = STATUS
+        change_status(USER, status, '')
+        p = Presence(status = status)
+        self._stream.send(p)
 
 
 cmd = CommandHandler()

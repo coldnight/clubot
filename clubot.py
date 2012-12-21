@@ -36,9 +36,9 @@ from pyxmpp2.roster import RosterReceivedEvent
 from pyxmpp2.interfaces import XMPPFeatureHandler
 from pyxmpp2.interfaces import presence_stanza_handler, message_stanza_handler
 from pyxmpp2.ext.version import VersionProvider
-from settings import USER,PASSWORD, DEBUG, PIDPATH, __version__, status, IMPORT
+from settings import USER,PASSWORD, DEBUG, PIDPATH, __version__, STATUS, IMPORT
 from plugin.mysql import add_member, del_member, get_member, change_status, get_nick
-from plugin.mysql import empty_status, get_members, handler, level
+from plugin.mysql import empty_status, get_members, handler, level, get_status
 from plugin.cmd import send_all_msg, send_command
 
 
@@ -184,6 +184,11 @@ class BotChat(EventHandler, XMPPFeatureHandler):
 
     @event_handler(RosterReceivedEvent)
     def handle_roster_received(self, event):
+        dbstatus = get_status(USER)
+        if not dbstatus:
+            status = STATUS
+        else:
+            status = dbstatus
         p = Presence(status=status)
         self.client.stream.send(p)
         ret = [x.jid.bare() for x in self.roster if x.subscription == 'both']
