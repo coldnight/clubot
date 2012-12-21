@@ -31,16 +31,16 @@ import sys
 import time
 import urllib, urllib2, json
 import traceback
-from db import get_members
-from db import get_nick, get_member
-from db import edit_member
-from db import add_history
-from db import is_online
-from db import get_history
-from db import logger
-from db import del_member
-from db import get_email
-from db import get_status
+from mysql import get_members
+from mysql import get_nick, get_member
+from mysql import edit_member
+from mysql import add_history
+from mysql import is_online
+from mysql import get_history
+from mysql import logger
+from mysql import del_member
+from mysql import get_email
+from mysql import get_status
 from pyxmpp2.message import Message
 from pyxmpp2.jid import JID
 from pyxmpp2.presence import Presence
@@ -475,7 +475,8 @@ def send_at_msg(stanza, stream, body, nick):
     mem = [get_member(nick=n) for n in r if get_member(nick = n)]
     if mem and body.startswith('@<'):
         b = re.sub(r'^@<.*?>', '', body)
-        return send_to_msg(stanza, stream, mem[0], b)
+        send_to_msg(stanza, stream, mem[0], b)
+        return True
     elif mem:
         b = '%s 提到了你说: %s' % (nick, body)
         [send_to_msg(stanza, stream, to, b) for to in mem]
@@ -495,7 +496,9 @@ def send_all_msg(stanza, stream, body, system=False):
     logger.info(u"{0} send message: {1}".format(stanza.from_jid, body))
     if cityid(body.strip()): return send_command(stanza, stream, '$_tq {0}'.format(body))
     if '@' in body:
-        send_at_msg(stanza, stream, body, nick)
+        isreturn = send_at_msg(stanza, stream, body, nick)
+        if isreturn:
+            return
     elif body.strip() == 'help':
         return send_command(stanza, stream, '$help')
     elif body.strip() == 'ping':
