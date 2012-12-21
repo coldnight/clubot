@@ -37,8 +37,8 @@ from pyxmpp2.interfaces import XMPPFeatureHandler
 from pyxmpp2.interfaces import presence_stanza_handler, message_stanza_handler
 from pyxmpp2.ext.version import VersionProvider
 from settings import USER,PASSWORD, DEBUG, PIDPATH, __version__, status, IMPORT
-from plugin.db import add_member, del_member, get_member, change_status, get_nick
-from plugin.db import empty_status, get_members, handler, level
+from plugin.mysql import add_member, del_member, get_member, change_status, get_nick
+from plugin.mysql import empty_status, get_members, handler, level
 from plugin.cmd import send_all_msg, send_command
 
 
@@ -245,20 +245,17 @@ def main():
         logger.setLevel(level)
         logger.addHandler(handler)
         logger.propagate = False
-    bot = BotChat()
     while True:
-        try:
-            bot.run()
-            if not bot.connected:
-                bot.disconnect()
-                bot.trytimes += 1
-                sleeptime = 10 * bot.trytimes
-                logger.info('Connect failed, will retry in {0}s of '
-                            '{1} times'.format(sleeptime, bot.trytimes))
-                time.sleep(sleeptime)
-        except Exception as ex:
-            bot.connected = False
-            logging.error(ex.message)
+        bot = BotChat()
+        bot.run()
+        bot.connected = False
+        if not bot.connected:
+            bot.disconnect()
+            bot.trytimes += 1
+            sleeptime = 10 * bot.trytimes
+            logger.info('Connect failed, will retry in {0}s of '
+                        '{1} times'.format(sleeptime, bot.trytimes))
+            time.sleep(sleeptime)
 
 
 def restart(signum, stack):

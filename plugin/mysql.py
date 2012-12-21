@@ -1,26 +1,17 @@
 #!/usr/bin/env python
-#-*- coding:utf-8 -*-
+# -*- coding:utf-8 -*-
 #
+#   Author  :   cold
+#   E-mail  :   wh_linux@126.com
+#   Date    :   12/12/20 17:43:45
+#   Desc    :   Clubot MySQL 接口
 #
-# Author : cold
-# email  : wh_linux@126.com
-# 2012-09-27 13:00
-#   + 增加一张表,为status表
-#   + 增加对状态操作的函数
-# 2012-10-8  09:57
-#   + 增加日志
-# 2012-10-30 16:00
-#   * 修改不在线时删除记录
-#   + 增加清空状态表
-#
-
-import os
 import logging
-import sqlite3
+import MySQLdb as mysqldb
 from datetime import datetime
 from settings import DEBUG
 from settings import LOGPATH
-from settings import DB_PATH
+from settings import DB_NAME, DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWD
 from settings import USER
 
 
@@ -29,8 +20,8 @@ if DEBUG:
     hdl = logging.StreamHandler()
     level = logging.DEBUG
 else:
-    level = logging.INFO
     hdl = logging.FileHandler(LOGPATH)
+level = logging.INFO
 fmt = logging.Formatter("%(asctime)s %(levelname)s [%(threadName)-10s] %(message)s")
 hdl.setFormatter(fmt)
 handler = hdl
@@ -46,96 +37,25 @@ def get_email(frm):
         result = frm
     return result
 
-def _init_table():
-    """
-    初始化数据库
-    """
-    if not os.path.exists(DB_PATH):
-        conn = sqlite3.connect(DB_PATH)
-        conn.isolation_level = None
-        cursor = conn.cursor()
-        """
-        创建成员数据库 members
-        key       type         default
-        id     INTEGER PRIMARY KEY AUTO_INCREMENT  null
-        email  VARCHAR          null
-        name   VARCHAR          null
-        nick   VARCHAR          null
-        last   timestamp         // 最后发言
-        lastchange timestamp     // 最后修改
-        isonline   INT           // 是否在线(0否, 1 是)
-        date timestamp           // 加入时间
-        """
-        cursor.execute("""
-                       create table members(
-                       id INTEGER PRIMARY KEY AUTOINCREMENT,
-                       email VARCHAR,
-                       name  VARCHAR,
-                       nick VARCHAR,
-                       last TIMESTAMP,
-                       lastchange TIMESTAMP,
-                       isonline INTEGER DEFAULT 1,
-                       date TIMESTAMP
-                       )
-                      """)
 
-        """
-        创建聊天记录表 history
-        key              type              default
-        id         INTEGER PRIMARY KEY AUTO_INCREMNT null
-        frmemail        VARCHAR       null
-        content    TEXT          null
-        toemail     VARCHAR       null             // all代表所有,其余对应相应的email
-        date       TIMESTAMP     (datetime('now', 'localtime'))
-        """
-        conn.commit()
-        cursor.execute("""
-            create table history(
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                frmemail VARCHAR,
-                toemail VARCHAR DEFAULT "all",
-                content TEXT,
-                date TIMESTAMP
-                )""")
-        conn.commit()
-
-        """
-        状态表 status
-        `key`               `type`              `default`
-        email      VARCHAR                       null
-        resource   VARCHAR                      null
-        status     INTEGER                       1 // 1在线,0不在线
-        statustext VARCHAR                      null
-        """
-        cursor.execute("""
-                       create table status(
-                       email VARCHAR,
-                       resource VARCHAR,
-                       status INTEGER DEFAULT 1,
-                       statustext VARCHAR)
-                       """
-                      )
-        conn.commit()
-    else:
-        conn = sqlite3.connect(DB_PATH)
-        conn.isolation_level = None
-        cursor = conn.cursor()
-
-    return cursor, conn
 
 def get_cursor():
     """
     获取数据库游标
     """
-    return _init_table()
+    conn  = mysqldb.Connection(host=DB_HOST, port = DB_PORT,
+                               user = DB_USER, passwd = DB_PASSWD,
+                               db = DB_NAME, charset = 'utf8')
+    cursor = conn.cursor()
+    return cursor, conn
 
 
 def get_status(email, resource = None):
     if resource:
-        sql = 'select status,statustext from status where email=? and resource=?'
+        sql = 'select status,statustext from status where email=%s and resource=%s'
         param = (email, resource)
     else:
-        sql = 'select status, statustext from status where email=?'
+        sql = 'select status, statustext from status where email=%s'
         param = (email,)
 
     cursor, conn = get_cursor()
@@ -153,13 +73,13 @@ def change_status(frm, status, statustext):
     resource = frm.resource
     stat = get_status(email, resource)
     if stat and status==0:
-        sql = 'delete from status where email=? and resource=?'
+        sql = 'delete from status where email=%s and resource=%s'
         param = (email, resource)
     elif stat and status==1:
-        sql = 'update status set status=?, statustext=? where email=? and resource=?'
+        sql = 'update status set status=%s, statustext=%s where email=%s and resource=%s'
         param = (status, statustext, email, resource)
     elif not stat and  status==1:
-        sql = 'insert into status(status, statustext,email, resource) VALUES(?,?,?,?)'
+        sql = 'insert into status(status, statustext,email, resource) VALUES(%s,%s,%s,%s)'
         param = (status, statustext, email, resource)
     else:
         return
@@ -171,7 +91,7 @@ def change_status(frm, status, statustext):
 
 
 def is_online(email):
-    sql = 'select status from status where email=? and status=1'
+    sql = 'select status from status where email=%s and status=1'
     cursor, conn = get_cursor()
     cursor.execute(sql,(email,))
     r = True if cursor.fetchall() else False
@@ -191,7 +111,7 @@ def add_member(frm):
     name = frm.local
     email = get_email(frm)
     if get_member(frm):return
-    sql = 'insert into members(email, name, nick, last, lastchange, date) VALUES(?,?,?,?,?,?)'
+    sql = 'insert into members(email, name, nick, last, lastchange, date) VALUES(%s,%s,%s,%s,%s,%s)'
     cursor.execute(sql, (email, name, name, now, now, now))
     conn.commit()
     cursor.close()
@@ -201,7 +121,7 @@ def add_member(frm):
 def del_member(frm):
     cursor, conn = get_cursor()
     email = get_email(frm)
-    sql = 'delete from members where email=?'
+    sql = 'delete from members where email=%s'
     cursor.execute(sql, (email,))
     conn.commit()
     cursor.close()
@@ -213,12 +133,12 @@ def edit_member(frm, nick = None, last=None):
     email = get_email(frm)
     if nick == 'system': return False
     if nick:
-        cursor.execute('select * from members where nick=?',(nick,))
+        cursor.execute('select * from members where nick=%s',(nick,))
         if cursor.fetchall():return False
-        sql = 'update members set nick=?,lastchange=? where email=?'
+        sql = 'update members set nick=%s,lastchange=%s where email=%s'
         param = (nick, now, email)
     else:
-        sql = 'update members set last=? where email=?'
+        sql = 'update members set last=%s where email=%s'
         param = (now, email)
 
     cursor.execute(sql, param)
@@ -236,14 +156,14 @@ def get_member(frm = None, uid = None, nick = None):
     """
     cursor, conn = get_cursor()
     if uid:
-        sql = 'select email from members where id=?'
+        sql = 'select email from members where id=%s'
         param = (int(uid),)
     elif frm:
         email = get_email(frm)
-        sql = 'select id from members where email=?'
+        sql = 'select id from members where email=%s'
         param = (email, )
     elif nick:
-        sql = 'select email from members where nick=?'
+        sql = 'select email from members where nick=%s'
         param = (nick, )
 
     cursor.execute(sql, param)
@@ -262,7 +182,7 @@ def get_members(frm= None):
     cursor, conn = get_cursor()
     if frm:
         email = get_email(frm)
-        sql = 'select email from members where email !=?'
+        sql = 'select email from members where email !=%s'
         param = (email, )
         cursor.execute(sql, param)
         r = cursor.fetchall()
@@ -281,10 +201,10 @@ def get_nick(frm= None, uid = None):
     cursor, conn = get_cursor()
     if frm:
         email = get_email(frm)
-        sql = 'select nick from members where email =?'
+        sql = 'select nick from members where email =%s'
         param = (email,)
     elif uid:
-        sql = 'select nick from members where id=?'
+        sql = 'select nick from members where id=%s'
         param = (uid,)
 
     cursor.execute(sql, param)
@@ -298,7 +218,7 @@ def get_nick(frm= None, uid = None):
 def add_history(frm, to, content):
     cursor, conn = get_cursor()
     frmemail = get_email(frm)
-    sql = 'insert into history(frmemail, toemail, content, date) VALUES(?,?,?,?)'
+    sql = 'insert into history(frmemail, toemail, content, date) VALUES(%s,%s,%s,%s)'
     param = (frmemail, to, content, now)
     cursor.execute(sql, param)
     conn.commit()
@@ -314,11 +234,11 @@ def get_history(sef, frm = None, index = 1,  size = 10):
     basesql = 'select id, frmemail, toemail, content, date from history where '
 
     if not frm or frm.strip() == 'all':
-        sql = basesql + 'toemail=? or toemail=? ORDER BY id DESC limit ? offset ?'
+        sql = basesql + 'toemail=%s or toemail=%s ORDER BY id DESC limit %s offset %s'
         param = (sef, 'all', limit, skip)
     else:
         frmemail = get_member(nick=frm)
-        sql = basesql +'(toemail=? or toemail=?) and frmemail=? ORDER BY id DESC limit ? offset ?'
+        sql = basesql +'(toemail=%s or toemail=%s) and frmemail=%s ORDER BY id DESC limit %s offset %s'
         param = ('all',sef, frmemail, limit, skip)
     cursor.execute(sql, param)
     tmp = cursor.fetchall()
@@ -352,6 +272,6 @@ def format(values):
     if values['to']!='all':
         values['nick'] += u' 悄悄对你说'
 
-    values['date'] = get_date(values['date'])
+    values['date'] = values['date']
 
     return t.substitute(values)
