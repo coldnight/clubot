@@ -36,21 +36,13 @@ from pyxmpp2.roster import RosterReceivedEvent
 from pyxmpp2.interfaces import XMPPFeatureHandler
 from pyxmpp2.interfaces import presence_stanza_handler, message_stanza_handler
 from pyxmpp2.ext.version import VersionProvider
-from settings import USER,PASSWORD, DEBUG, PIDPATH, __version__, status, IMPORT
+from settings import USER,PASSWORD, DEBUG, PIDPATH, __version__, STATUS, IMPORT
 from plugin.mysql import add_member, del_member, get_member, change_status, get_nick
-from plugin.mysql import empty_status, get_members, handler, level
+from plugin.mysql import empty_status, get_members, handler, level, get_status
 from plugin.cmd import send_all_msg, send_command
+from plugin.util import welcome, new_member
 
 
-
-def welcome(frm):
-    r = u"欢迎加入我们\n你的昵称是{0}\n可以使用{1}更改你的昵称\n"
-    r += u"可以使用help查看帮助"
-    r = r.format(frm.local, "$nick")
-    return r
-
-def new_member(frm):
-    return u"{0} 加入群".format(frm.local)
 
 class BotChat(EventHandler, XMPPFeatureHandler):
     def __init__(self):
@@ -146,10 +138,13 @@ class BotChat(EventHandler, XMPPFeatureHandler):
         name = stanza.from_jid.bare().as_string()
         if not body: return True
         if body.startswith('$') or body.startswith('-'):
-            target, name = send_command, '{0}_run_cmd_{1}'.format(name, random.random())
+            target, name = (send_command,
+            '{0}_run_cmd_{1}'.format(name, random.random()))
         else:
-            target, name = send_all_msg, '{0}_send_msg_{1}'.format(name, random.random())
-        t = threading.Thread(name=name,target=target, args=(stanza, self.stream, body))
+            target, name = (send_all_msg,
+                            '{0}_send_msg_{1}'.format(name, random.random()))
+        t = threading.Thread(name=name,target=target,
+                             args=(stanza, self.stream, body))
         t.setDaemon(True)
         t.start()
         return True
@@ -182,6 +177,11 @@ class BotChat(EventHandler, XMPPFeatureHandler):
 
     @event_handler(RosterReceivedEvent)
     def handle_roster_received(self, event):
+        dbstatus = get_status(USER)
+        if not dbstatus:
+            status = STATUS
+        else:
+            status = dbstatus
         p = Presence(status=status)
         self.client.stream.send(p)
         ret = [x.jid.bare() for x in self.roster if x.subscription == 'both']

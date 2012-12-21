@@ -36,7 +36,7 @@ DB_USER = 'root'
 
 DB_PASSWD = ''
 
-status = u"Pythoner Club Linux/Vim/Python 技术交流"
+STATUS = u"Pythoner Club Linux/Vim/Python 技术交流"
 
 # DEBUG:10
 # INFO : 20

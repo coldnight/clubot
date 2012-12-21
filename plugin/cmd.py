@@ -24,142 +24,24 @@
 # 2012-10-30 14:00
 #   * 修改history列表方式
 #
-
-
+# 2012-12-21 15:14
+#   * 修改代码结构
+#
 import re
-import sys
 import time
-import urllib, urllib2, json
 import traceback
-from mysql import get_members
-from mysql import get_nick, get_member
-from mysql import edit_member
-from mysql import add_history
-from mysql import is_online
-from mysql import get_history
-from mysql import logger
-from mysql import del_member
-from mysql import get_email
-from mysql import get_status
-from pyxmpp2.message import Message
-from pyxmpp2.jid import JID
-from pyxmpp2.presence import Presence
-from fanyi import Complex
-from settings import __version__
-from settings import USER
-from settings import LOGPATH
-from settings import ADMINS
+
+from mysql import get_members, get_nick, get_member, edit_member, add_history
+from mysql import is_online, get_history, logger, del_member, get_email
+from mysql import get_status, change_status
+from settings import __version__, LOGPATH, ADMINS, USER, STATUS
+from util import http_helper, run_code, paste_code, add_commends
+from util import get_code_types, Complex
 from city import cityid
 
-
-def http_helper(url, param = None, callback=None):
-    if param:
-        data = urllib.urlencode(param)
-        req =urllib2.Request(url,data)
-    else:
-        req = urllib2.Request(url)
-    req.add_header("User-Agent", "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:14.0) Gecko/20100101 Firefox/14.0.1")
-    res = urllib2.urlopen(req)
-
-    if callback:
-        result = callback(res)
-    else:
-        result =  res.read()
-    return result
-
-def http_helper2(url, params, method = 'POST'):
-    """ http请求辅助函数 """
-    params = urllib.urlencode(params)
-    if method.lower() == 'post':
-        request = urllib2.Request(url, params)
-    elif method.lower() == 'get':
-        url += '?'+params
-        request = urllib2.Request(url)
-    else:
-        raise ValueError('method error')
-
-    response = urllib2.urlopen(request)
-    tmp = response.read()
-    result = json.loads(tmp)
-    return result
-
-def run_code(code):
-    CODERUN = "http://1.pyec.sinaapp.com/run"
-    result = http_helper2(CODERUN, dict(code=code))
-    status = result.get('status')
-    if status:
-        body = "执行成功:\n" + result.get('out')
-    else:
-        body = "执行失败:\n" + result.get('err')
-
-    return body
-
-def _get_code_types():
-    """获取贴代码支持的类型"""
-    purl = "http://paste.linuxzen.com/paste"
-    def handle(res):
-        r = re.compile(r'<option\s+value="(.*?)".*?>(.*?)</option>')
-        result = []
-        for line in res.readlines():
-            if '<option' not in line: continue
-            t = dict()
-            t['key'], t['value'] = r.findall(line)[0]
-            result.append(t)
-        return result
-    try:
-        result = http_helper(purl, callback=handle)
-        import string
-        t = string.Template("""$key : $value  """)
-        r = [t.substitute(v) for v in result]
-        result = '\n'.join(r)
-    except:
-        result = u'代码服务异常,请通知管理员稍候再试'
-    return result
-
-
-def paste_code(poster, typ, codes):
-    param = {'class':typ}
-    param.update(poster=poster, code = codes, paste="发送")
-    purl = "http://paste.linuxzen.com/paste"
-    get_url = lambda res:res.url
-    try:
-        url = http_helper(purl, param, get_url)
-    except:
-        return False
-    if url == purl:
-        return False
-    else:
-        return url
-
-
-def _add_commends(codes, typ, nick):
-    commends = {"actionscript": "// ", "actionscript-french" : "// ",
-                "ada" : "-- ","apache" : "# ","applescript" : "- ",
-                "asm" : "; ","asp" : "// ",  "autoit" : "; ","bash" : "# ",
-                "blitzbasic" : "' ","c ":"// ","c_mac" : "// ",
-                "cpp" :" // ","csharp" : "// ","css" : ["/* ", " */"],
-                "freebasic" : "' ","html4strict" : ["<!-- ", " -->"],
-                "java" : "//  ","java5" : "//  ","javascript" : "//  ",
-                "lisp" : ";; ","lua" : "--  ","mysql" : "--  ",
-                "objc" : "// ","perl" : "# ","php" : "// ",
-                "php-brief" : "//  ","python" : "# ","qbasic" : "' ",
-                "robots" : "# ","ruby" : "#","sql" : "--  ",
-                "tsql" : "-- ","vb" : "'  ","vbnet" : "//  ", "xml":["<!--", "-->"],
-                "vim":'"'
-               }
-    codes  = list(codes)
-    symbol = commends.get(typ, '// ')
-    if isinstance(symbol, list):
-        c = "%s 由Pythoner Club 的 %s 提交\n 欢迎加入我们讨论技术: \
-            \n\t使用gtalk添加%s %s\n" % (symbol[0], nick, USER, symbol[1])
-    else:
-        c = "%s 由Pythoner Club 的 %s 提交\n%s 欢迎加入我们讨论技术: \
-            \n%s\t使用gtalk添加%s\n" % (symbol, nick, symbol, symbol, USER)
-    c += "#\n#\n####### Code Start #####################\n"
-    codes.insert(0, c)
-    return codes
-
-
+from pyxmpp2.presence import Presence
+from pyxmpp2.message import Message
+from pyxmpp2.jid import JID
 
 class CommandHandler(object):
     """
@@ -170,7 +52,7 @@ class CommandHandler(object):
         所有命令须返回Message/Presence的实例或实例列表
     """
     _cache = {}
-    def list(self, stanza, *args):
+    def ls(self, stanza, *args):
         """列出所有成员"""
         frm = stanza.from_jid
         femail = get_email(frm)
@@ -195,13 +77,13 @@ class CommandHandler(object):
 
 
     def trans(self, stanza, *args):
-        """中日英翻译,默认英-汉翻译,eg $trans zh-en 中文,$trans ja-zh 死ぬ行く"""
+        """中日英翻译,默认英-汉翻译"""
         trans = Complex()
         return self._send_cmd_result(stanza, trans.trans([x for x in args]))
 
 
     def _tq(self, stanza, *args):
-        """指定城市获取天气, eg. $tq 广州"""
+        """指定城市获取天气"""
         tq = Complex()
         body = tq.tq(''.join([x for x in args]))
         self._send_cmd_result(stanza, body)
@@ -211,8 +93,8 @@ class CommandHandler(object):
         self._send_cmd_result(stanza, 'is ok, I am online')
 
 
-    def msgto(self, stanza, *args):
-        """单独给某用户发消息 eg $msgto nick hello(给nick发送hello) 也可以使用@<nick> 消息"""
+    def mt(self, stanza, *args):
+        """单独给某用户发消息"""
         #TODO Write check online
         if len(args) <= 1: return self.help(stanza, 'msgto')
         nick = args[0]
@@ -225,7 +107,7 @@ class CommandHandler(object):
 
 
     def nick(self, stanza, *args):
-        """更改昵称 eg. $nick yournewnickname"""
+        """更改昵称 eg. -nick yournewnickname"""
         if len(args) < 1: return self.help(stanza, 'nick')
         nick = ' '.join(args[0:])
         frm = stanza.from_jid
@@ -240,11 +122,11 @@ class CommandHandler(object):
 
 
     def code(self, stanza, *args):
-        """<type> <code> 贴代码,可以使用$codetypes查看允许的代码类型"""
+        """<type> <code> 贴代码,使用-ct 查看允许的代码类型"""
         if len(args) <= 1: return self.help(stanza, 'code')
         nick = get_nick(stanza.from_jid)
         typ = args[0]
-        codes = _add_commends(args[1:], typ, nick)
+        codes = add_commends(args[1:], typ, nick)
         codes = ''.join(codes[0:2]) + ' '.join(codes[2:])
         poster = "Pythoner Club: %s" % nick
         r = paste_code(poster,typ, codes)
@@ -265,18 +147,18 @@ class CommandHandler(object):
         send_all_msg(stanza, self._stream, body, True)
         self._send_cmd_result(stanza, result)
 
-    def codetypes(self, stanza, *args):
-        """返回有效的贴代码的类型"""
+    def ct(self, stanza, *args):
+        """返回允许的代码类型"""
         if self._cache.get('typs'):
             body = self._cache.get('typs')
         else:
-            body = _get_code_types()
+            body = get_code_types()
             self._cache.update(typs = body)
         return self._send_cmd_result(stanza, body)
 
 
-    def invite(self, stanza, *args):
-        """邀请好友加入 eg. $invite <yourfirendemail>"""
+    def it(self, stanza, *args):
+        """邀请好友加入 eg. -invite <yourfirendemail>"""
         if len(args) < 1:return self.help(stanza, 'invite')
         to = args[0]
         p1 = Presence(from_jid = stanza.to_jid, to_jid = JID(to),
@@ -286,19 +168,20 @@ class CommandHandler(object):
         self._stream.send(p1)
         self._stream.send(p)
 
+
     def help(self, stanza, *args):
         """显示帮助"""
         if args:
             func = self._get_cmd(args[0])
             if func:
-                body ="${0} : {1}".format(args[0], func.__doc__)
+                body ="-{0} : {1}".format(args[0], func.__doc__)
             else:
-                body = "${0} : command unknow" .format(args[0])
+                body = "-{0} : command unknow" .format(args[0])
         else:
             body = []
             funcs = self._get_cmd()
             for f in funcs:
-                r = "$%s  %s" % (f.get('name'), f.get('func').__doc__)
+                r = "-%s\t%s" % (f.get('name'), f.get('func').__doc__)
                 body.append(r)
             body = sorted(body, key=lambda k:k[1])
             body = '\n'.join(body)
@@ -336,7 +219,8 @@ class CommandHandler(object):
         """显示版本信息"""
         author = ['cold night(wh_linux@126.com)',
                     'eleven.i386(eleven.i386@gmail.com)',]
-        body = "Version %s\nAuthors\n\t%s\n" % (__version__, '\n\t'.join(author))
+        body = "Version %s\nAuthors\n\t%s\n" % (__version__,
+                                                '\n\t'.join(author))
         body += "\nhttps://github.com/coldnight/clubot"
         return self._send_cmd_result(stanza, body)
 
@@ -377,7 +261,8 @@ class CommandHandler(object):
         if name:
             command = getattr(self, name)
         else:
-            command = [{'name':k, 'func':getattr(self, k)} for k in dir(self) if not k.startswith('_')]
+            command = [{'name':k, 'func':getattr(self, k)}
+                       for k in dir(self) if not k.startswith('_')]
         return command
 
 
@@ -391,25 +276,29 @@ class CommandHandler(object):
             cmdline = (splitbody[0], '\n'.join(splitbody[1:]))
         else:
             cmdline= splitbody
-        cmdline = list(cmdline)
-        tmp = cmdline[0].split(' ')
-        result = tmp + cmdline[1:]
-        cmdline = result
+        tmp = list(cmdline)
+        cmdline = tmp[0].split(' ') + tmp[1:]
         return cmdline[0], cmdline[1:]
 
-    def _run_cmd(self, stanza, stream, cmd):
+    def _run_cmd(self, stanza, stream, cmd, pre):
         """获取命令"""
         c, args = self._parse_args(cmd)
         email = get_email(stanza.from_jid)
         self._stream = stream
+        cmds = [v.get('name') for v in self._get_cmd()]
+        if c not in cmds:
+            send_all_msg(stanza, stream, pre + cmd)
+            return
         try:
             logger.info('%s run cmd %s', email, c)
             m =getattr(self, c)(stanza, *args)
         except Exception as e:
             logger.warning(e.message)
-            body = u'{0} run command {1} happend an error: {2}'.format(get_nick(email), c, e.message)
-            [send_to_msg(stanza, self._stream, admin, body) for admin in ADMINS]
-            traceback.print_exc(file=sys.stdout)
+            errorinfo = traceback.format_exc()
+            body = u'{0} run command {1} happend an error:\
+                    {2}'.format(get_nick(email), c, errorinfo)
+            [send_to_msg(stanza, self._stream, admin, body)
+             for admin in ADMINS]
             return
 
         return m
@@ -418,7 +307,7 @@ class CommandHandler(object):
 class AdminCMDHandle(CommandHandler):
     """管理员命令"""
     def log(self, stanza, *args):
-        """查看日志($log <page> <size>)"""
+        """查看日志"""
         lf = open(LOGPATH)
         lines = lf.readlines()
         lines.append('\ntotal lines: %d' % len(lines))
@@ -437,8 +326,8 @@ class AdminCMDHandle(CommandHandler):
 
 
     def rm(self, stanza, *args):
-        """剔除用户($rm nick1 nick2 nick3...)"""
-        #TODO 没有效果
+        """剔除用户"""
+        #XXX 没有效果
         emails = [get_member(nick = n) for n in args]
         if len(emails) < 1: return self.help(stanza, 'rm')
         for e in emails:
@@ -446,19 +335,32 @@ class AdminCMDHandle(CommandHandler):
             self._stream.send(Presence(to_jid = jid, stanza_type='unsubscribe'))
             del_member(jid)
 
+    def cs(self, stanza, *args):
+        """ 更改状态 """
+        if args:
+            status = ' '.join(args)
+        else:
+            status = STATUS
+        change_status(USER, status, '')
+        p = Presence(status = status)
+        self._stream.send(p)
 
-run_cmd = CommandHandler()._run_cmd
-admin_run_cmd = AdminCMDHandle()._run_cmd
+
+cmd = CommandHandler()
+admincmd = AdminCMDHandle()
+run_cmd = cmd._run_cmd
+admin_run_cmd = admincmd._run_cmd
 
 
 def send_command(stanza, stream, body):
     logger.info(u"{0} send command: {1}".format(stanza.from_jid, body))
     cmd = body[1:]
+    pre = body[0]
     email = get_email(stanza.from_jid)
     if email in ADMINS:
-        admin_run_cmd(stanza, stream, cmd)
+        admin_run_cmd(stanza, stream, cmd, pre)
     else:
-        run_cmd(stanza, stream, cmd)
+        run_cmd(stanza, stream, cmd, pre)
 
 
 def send_msg(stanza, stream, to_email, body):
@@ -494,15 +396,16 @@ def send_all_msg(stanza, stream, body, system=False):
     tos = get_members(frm)
     add_history(frm, 'all', body)
     logger.info(u"{0} send message: {1}".format(stanza.from_jid, body))
-    if cityid(body.strip()): return send_command(stanza, stream, '$_tq {0}'.format(body))
+    if cityid(body.strip()):
+        return send_command(stanza, stream, '-_tq {0}'.format(body))
     if '@' in body:
         isreturn = send_at_msg(stanza, stream, body, nick)
         if isreturn:
             return
     elif body.strip() == 'help':
-        return send_command(stanza, stream, '$help')
+        return send_command(stanza, stream, '-help')
     elif body.strip() == 'ping':
-        return send_command(stanza, stream, '$_ping')
+        return send_command(stanza, stream, '-_ping')
     body = "{0}".format(body) if system else "[%s] %s" % (nick, body)
     [send_msg(stanza, stream, to, body) for to in tos]
 

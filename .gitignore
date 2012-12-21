@@ -9,4 +9,4 @@
 tags
 .#*
 *.db
-./settings.py
+logs/
