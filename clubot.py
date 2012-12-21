@@ -25,6 +25,7 @@ import signal
 import subprocess
 import threading
 
+import pyxmpp2
 from pyxmpp2.jid import JID
 from pyxmpp2.message import Message
 from pyxmpp2.presence import Presence
@@ -247,7 +248,11 @@ def main():
         logger.propagate = False
     while True:
         bot = BotChat()
-        bot.run()
+        try:
+            bot.run()
+        except pyxmpp2.exceptions.SASLAuthenticationFailed:
+            print 'Username or Password Error!!!'
+            sys.exit(2)
         bot.connected = False
         if not bot.connected:
             bot.disconnect()

@@ -158,7 +158,7 @@ class CommandHandler(object):
 
 
     def it(self, stanza, *args):
-        """邀请好友加入 eg. -invite <yourfirendemail>"""
+        """邀请好友加入 eg. -it <yourfirendemail>"""
         if len(args) < 1:return self.help(stanza, 'invite')
         to = args[0]
         p1 = Presence(from_jid = stanza.to_jid, to_jid = JID(to),
