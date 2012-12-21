@@ -40,17 +40,9 @@ from settings import USER,PASSWORD, DEBUG, PIDPATH, __version__, STATUS, IMPORT
 from plugin.mysql import add_member, del_member, get_member, change_status, get_nick
 from plugin.mysql import empty_status, get_members, handler, level, get_status
 from plugin.cmd import send_all_msg, send_command
+from plugin.util import welcome, new_member
 
 
-
-def welcome(frm):
-    r = u"欢迎加入我们\n你的昵称是{0}\n可以使用{1}更改你的昵称\n"
-    r += u"可以使用help查看帮助"
-    r = r.format(frm.local, "-nick")
-    return r
-
-def new_member(frm):
-    return u"{0} 加入群".format(frm.local)
 
 class BotChat(EventHandler, XMPPFeatureHandler):
     def __init__(self):

@@ -161,3 +161,14 @@ class Complex():
         for i in x:
             if ord(i) < 128:return True
             else:return False
+
+
+def welcome(frm):
+    r = u"欢迎加入我们\n你的昵称是{0}\n可以使用{1}更改你的昵称\n"
+    r += u"可以使用help查看帮助"
+    r = r.format(frm.local, "-nick")
+    return r
+
+def new_member(frm):
+    return u"{0} 加入群".format(frm.local)
+
