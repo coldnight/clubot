@@ -6,9 +6,12 @@
 #   Date    :   12/12/21 15:58:35
 #   Desc    :   工具类函数
 #
+import re
+import traceback
 from settings import USER
 import urllib, urllib2, json
 from city import cityid
+from mysql import logger
 
 def http_helper(url, param = None, callback=None):
     if param:
@@ -71,6 +74,8 @@ def get_code_types():
         r = [t.substitute(v) for v in result]
         result = '\n'.join(r)
     except:
+        err_msg = traceback.format_exc()
+        logger.warning(err_msg)
         result = u'代码服务异常,请通知管理员稍候再试'
     return result
 
@@ -83,6 +88,8 @@ def paste_code(poster, typ, codes):
     try:
         url = http_helper(purl, param, get_url)
     except:
+        err_msg = traceback.format_exc()
+        logger.warning(err_msg)
         return False
     if url == purl:
         return False

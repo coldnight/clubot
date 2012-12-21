@@ -134,7 +134,7 @@ class CommandHandler(object):
             send_all_msg(stanza, self._stream, r)
             self._send_cmd_result(stanza, r)
         else:
-            self._send_cmd_result(stanza, 'something wrong')
+            self._send_cmd_result(stanza, '代码服务异常,通知管理员')
 
     def py(self, stanza, *args):
         """ 执行Python代码 """
