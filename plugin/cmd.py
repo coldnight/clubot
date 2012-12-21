@@ -299,6 +299,7 @@ class CommandHandler(object):
                     {2}'.format(get_nick(email), c, errorinfo)
             [send_to_msg(stanza, self._stream, admin, body)
              for admin in ADMINS]
+            self._send_cmd_result(stanza, c + ' 命令异常,已通知管理员')
             return
 
         return m
