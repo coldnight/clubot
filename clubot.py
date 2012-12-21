@@ -46,7 +46,7 @@ from plugin.cmd import send_all_msg, send_command
 def welcome(frm):
     r = u"欢迎加入我们\n你的昵称是{0}\n可以使用{1}更改你的昵称\n"
     r += u"可以使用help查看帮助"
-    r = r.format(frm.local, "$nick")
+    r = r.format(frm.local, "-nick")
     return r
 
 def new_member(frm):
@@ -146,10 +146,13 @@ class BotChat(EventHandler, XMPPFeatureHandler):
         name = stanza.from_jid.bare().as_string()
         if not body: return True
         if body.startswith('$') or body.startswith('-'):
-            target, name = send_command, '{0}_run_cmd_{1}'.format(name, random.random())
+            target, name = (send_command,
+            '{0}_run_cmd_{1}'.format(name, random.random()))
         else:
-            target, name = send_all_msg, '{0}_send_msg_{1}'.format(name, random.random())
-        t = threading.Thread(name=name,target=target, args=(stanza, self.stream, body))
+            target, name = (send_all_msg,
+                            '{0}_send_msg_{1}'.format(name, random.random()))
+        t = threading.Thread(name=name,target=target,
+                             args=(stanza, self.stream, body))
         t.setDaemon(True)
         t.start()
         return True
