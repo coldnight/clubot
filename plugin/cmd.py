@@ -284,7 +284,7 @@ class CommandHandler(object):
 
     def version(self, stanza, *args):
         """显示版本信息"""
-        author = ['cold night(wh_linux@126.com)',
+        author = ['cold(wh_linux@126.com)',
                     'eleven.i386(eleven.i386@gmail.com)',]
         body = "Version %s\nAuthors\n\t%s\n" % (__version__,
                                                 '\n\t'.join(author))
