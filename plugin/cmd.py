@@ -35,6 +35,7 @@
 import re
 import time
 import traceback
+import threading
 
 from mysql import get_members, get_nick, get_member, edit_member, add_history
 from mysql import is_online, get_history, del_member, get_email
@@ -61,6 +62,7 @@ class CommandHandler(object):
     """
     _cache = {}
     _modes = MODES
+    _lock = threading.RLock()
     def ls(self, stanza, *args):
         """列出成员/模式/允许的代码,发送-ls help查看用法"""
         mode = args[0] if len(args) >= 1 else None
@@ -348,7 +350,7 @@ class CommandHandler(object):
         cmdline = tmp[0].split(' ') + tmp[1:]
         return cmdline[0], cmdline[1:]
 
-    def _run_cmd(self, stanza, stream, cmd, pre):
+    def _cmd(self, stanza, stream, cmd, pre):
         """获取命令"""
         c, args = self._parse_args(cmd)
         email = get_email(stanza.from_jid)
@@ -373,6 +375,10 @@ class CommandHandler(object):
             return
 
         return m
+
+    def _run_cmd(self, stanza, stream, cmd, pre):
+        with self._lock:
+            self._cmd(stanza, stream, cmd, pre)
 
 
 class AdminCMDHandle(CommandHandler):
