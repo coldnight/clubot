@@ -354,6 +354,8 @@ class CommandHandler(object):
         email = get_email(stanza.from_jid)
         self._stream = stream
         cmds = [v.get('name') for v in self._get_cmd()]
+        cmds.append('_ping')
+        cmds.append('_tq')
         if c not in cmds:
             send_all_msg(stanza, stream, pre + cmd)
             return
