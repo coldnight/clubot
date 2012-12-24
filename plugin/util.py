@@ -52,7 +52,7 @@ def http_helper2(url, params, method = 'POST'):
     return result
 
 def run_code(code):
-    CODERUN = "http://1.pyec.sinaapp.com/run"
+    CODERUN = "http://pythonec.appspot.com/run"
     result = http_helper2(CODERUN, dict(code=code))
     status = result.get('status')
     if status:
