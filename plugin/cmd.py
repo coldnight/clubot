@@ -30,6 +30,7 @@
 # 2012-12-24 15:30
 #   * 修改ls命令处理方式
 #   + 添加cd命令用于模式处理
+#   + 添加me命令用于查看自己的信息
 #
 import re
 import time
@@ -270,12 +271,15 @@ class CommandHandler(object):
         body = '\n\n'.join(infos)
         self._send_cmd_result(stanza, body)
 
-
     def _whois(self, frm):
         result = get_user_info(frm)
         body = user_info_template.substitute(result)
         return body
 
+    def me(self, stanza, *args):
+        """ 查看自己的详细信息 """
+        body = self._whois(stanza.from_jid)
+        self._send_cmd_result(stanza, body)
 
     def version(self, stanza, *args):
         """显示版本信息"""
@@ -456,6 +460,11 @@ def send_all_msg(stanza, stream, body, system=False):
     - `system` : 是否为系统消息 ( added at 2012-10-29)
     """
     frm = stanza.from_jid
+    mode = get_info('mode', frm)
+    if mode and mode == 'quiet':
+        body = "你现在在安静模式下,如要发送消息请使用-cd命令切换到聊天模式"
+        send_msg(stanza, stream, frm.bare().as_string(), body)
+        return
     nick = get_nick(frm)
     tos = get_members(frm)
     tos = [to for to in tos
