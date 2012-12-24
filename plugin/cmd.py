@@ -84,7 +84,7 @@ class CommandHandler(object):
             if mode in nicks:
                 self._show_nicks(stanza, [mode])
             else:
-                body = 'Useage: \n\
+                body = 'Usage: \n\
                         -ls                   查看所有成员\n\
                         -ls [u|user] [nick]   查看用户\n\
                         -ls nick              查看nick的详细信息\n\
@@ -119,7 +119,7 @@ class CommandHandler(object):
         """ 进入模式,发送-ls m查看所支持的模式 """
         mode = args[0] if len(args) == 1 else None
         if not mode or mode not in self._modes:
-            body = "Useage:\n\
+            body = "Usage:\n\
                     -cd MODE    进入MODE模式,使用-ls m查看允许的模式"
         else:
             add_info('mode', mode, stanza.from_jid)
