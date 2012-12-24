@@ -7,11 +7,18 @@
 #   Desc    :   工具类函数
 #
 import re
+import logging
 import traceback
-from settings import USER
 import urllib, urllib2, json
+from datetime import datetime
+from settings import DEBUG
+from settings import LOGPATH
+from settings import USER
 from city import cityid
-from mysql import logger
+
+
+NOW = lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+now = datetime.now()
 
 def http_helper(url, param = None, callback=None):
     if param:
@@ -75,6 +82,7 @@ def get_code_types():
         result = '\n'.join(r)
     except:
         err_msg = traceback.format_exc()
+        logger = get_logger()
         logger.warning(err_msg)
         result = u'代码服务异常,请通知管理员稍候再试'
     return result
@@ -89,6 +97,7 @@ def paste_code(poster, typ, codes):
         url = http_helper(purl, param, get_url)
     except:
         err_msg = traceback.format_exc()
+        logger = get_logger()
         logger.warning(err_msg)
         return False
     if url == purl:
@@ -178,4 +187,32 @@ def welcome(frm):
 
 def new_member(frm):
     return u"{0} 加入群".format(frm.local)
+
+level = None
+handler = None
+def get_logger():
+    global level, handler
+    logger = logging.getLogger()
+    if DEBUG:
+        hdl = logging.StreamHandler()
+        level = logging.DEBUG
+    else:
+        hdl = logging.FileHandler(LOGPATH)
+    level = logging.INFO
+    fmt = logging.Formatter("%(asctime)s %(levelname)s [%(threadName)-10s] %(message)s")
+    hdl.setFormatter(fmt)
+    handler = hdl
+    logger.addHandler(handler)
+    logger.setLevel(logging.INFO) # change to DEBUG for higher verbosity
+    return logger
+
+
+def get_email(frm):
+    try:
+        result = frm.bare().as_string()
+    except:
+        result = frm
+    return result
+
+
 

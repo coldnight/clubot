@@ -5,37 +5,21 @@
 #   E-mail  :   wh_linux@126.com
 #   Date    :   12/12/20 17:43:45
 #   Desc    :   Clubot MySQL 接口
+#   History :
+#               12/12/20
+#                    + 继承sqlite接口
+#               12/12/24
+#                     + 添加info接口
+#                     - 移除logger,放到util里
+#                     + 添加info表记录信息和配置
 #
-import logging
+#
+import string
 import MySQLdb as mysqldb
 from datetime import datetime
-from settings import DEBUG
-from settings import LOGPATH
-from settings import DB_NAME, DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWD
-from settings import USER
-
-
-logger = logging.getLogger()
-if DEBUG:
-    hdl = logging.StreamHandler()
-    level = logging.DEBUG
-else:
-    hdl = logging.FileHandler(LOGPATH)
-level = logging.INFO
-fmt = logging.Formatter("%(asctime)s %(levelname)s [%(threadName)-10s] %(message)s")
-hdl.setFormatter(fmt)
-handler = hdl
-logger.addHandler(handler)
-logger.setLevel(logging.INFO) # change to DEBUG for higher verbosity
-
-NOW = lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-def get_email(frm):
-    try:
-        result = frm.bare().as_string()
-    except:
-        result = frm
-    return result
+from settings import DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWD, USER
+from settings import ADMINS, MODES
+from .util import  get_email, now
 
 
 
@@ -49,10 +33,20 @@ def get_cursor():
     cursor = conn.cursor()
     return cursor, conn
 
+def execute_sql(sql, params, commit=False):
+    cursor, conn = get_cursor()
+    cursor.execute(sql, params)
+    if commit:
+        conn.commit()
+    r = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    return r
 
 def get_status(email, resource = None):
     if resource:
-        sql = 'select status,statustext from status where email=%s and resource=%s'
+        sql = 'select status,statustext from status where email=%s and \
+                resource=%s'
         param = (email, resource)
     else:
         sql = 'select status, statustext from status where email=%s'
@@ -75,11 +69,14 @@ def change_status(frm, status, statustext):
     if stat and status==0:
         sql = 'delete from status where email=%s and resource=%s'
         param = (email, resource)
+        add_info('last_online', now, frm)
     elif stat and status==1:
-        sql = 'update status set status=%s, statustext=%s where email=%s and resource=%s'
+        sql = 'update status set status=%s, statustext=%s where email=%s \
+                and resource=%s'
         param = (status, statustext, email, resource)
     elif not stat and  status==1:
-        sql = 'insert into status(status, statustext,email, resource) VALUES(%s,%s,%s,%s)'
+        sql = 'insert into status(status, statustext,email, resource) \
+                VALUES(%s,%s,%s,%s)'
         param = (status, statustext, email, resource)
     else:
         return
@@ -91,6 +88,7 @@ def change_status(frm, status, statustext):
 
 
 def is_online(email):
+    email = get_email(email)
     sql = 'select status from status where email=%s and status=1'
     cursor, conn = get_cursor()
     cursor.execute(sql,(email,))
@@ -105,17 +103,18 @@ def empty_status():
     cursor.close()
     conn.close()
 
-now = datetime.now()
 def add_member(frm):
     cursor, conn = get_cursor()
     name = frm.local
     email = get_email(frm)
     if get_member(frm):return
-    sql = 'insert into members(email, name, nick, last, lastchange, date) VALUES(%s,%s,%s,%s,%s,%s)'
+    sql = 'insert into members(email, name, nick, last, lastchange, date) \
+            VALUES(%s,%s,%s,%s,%s,%s)'
     cursor.execute(sql, (email, name, name, now, now, now))
     conn.commit()
     cursor.close()
     conn.close()
+    add_info('join_time', now, frm)
 
 
 def del_member(frm):
@@ -137,6 +136,10 @@ def edit_member(frm, nick = None, last=None):
         if cursor.fetchall():return False
         sql = 'update members set nick=%s,lastchange=%s where email=%s'
         param = (nick, now, email)
+        add_info('last_change_nick', now, frm)
+        times = get_info('change_nick_times', frm)
+        times = int(times) if times else 0
+        add_info('change_nick_times', times + 1, frm)
     else:
         sql = 'update members set last=%s where email=%s'
         param = (now, email)
@@ -218,12 +221,14 @@ def get_nick(frm= None, uid = None):
 def add_history(frm, to, content):
     cursor, conn = get_cursor()
     frmemail = get_email(frm)
-    sql = 'insert into history(frmemail, toemail, content, date) VALUES(%s,%s,%s,%s)'
+    sql = 'insert into history(frmemail, toemail, content, date) VALUES(%s,\
+            %s,%s,%s)'
     param = (frmemail, to, content, now)
     cursor.execute(sql, param)
     conn.commit()
     cursor.close()
     conn.close()
+    add_info('last_say', now, frm)
 
 
 def get_history(sef, frm = None, index = 1,  size = 10):
@@ -234,11 +239,13 @@ def get_history(sef, frm = None, index = 1,  size = 10):
     basesql = 'select id, frmemail, toemail, content, date from history where '
 
     if not frm or frm.strip() == 'all':
-        sql = basesql + 'toemail=%s or toemail=%s ORDER BY id DESC limit %s offset %s'
+        sql = basesql + 'toemail=%s or toemail=%s ORDER BY id DESC limit \
+                %s offset %s'
         param = (sef, 'all', limit, skip)
     else:
         frmemail = get_member(nick=frm)
-        sql = basesql +'(toemail=%s or toemail=%s) and frmemail=%s ORDER BY id DESC limit %s offset %s'
+        sql = basesql +'(toemail=%s or toemail=%s) and frmemail=%s ORDER BY \
+                id DESC limit %s offset %s'
         param = ('all',sef, frmemail, limit, skip)
     cursor.execute(sql, param)
     tmp = cursor.fetchall()
@@ -253,7 +260,69 @@ def get_history(sef, frm = None, index = 1,  size = 10):
     result.reverse()
     return '\n'.join(result)
 
+def add_info(key, value, email):
+    """ 添加信息 """
+    email = get_email(email)
+    if get_info(key, email):
+        sql = 'update info set `value`=%s where `key`=%s and `email` = %s'
+        params = (value, key, email)
+    else:
+        sql = 'insert into info(`email`, `key`, `value`) VALUES(%s, %s, %s);'
+        params = (email, key, value )
+    execute_sql(sql, params, True)
 
+def get_info(key, email):
+    """ 获取信息,uid=0为全局信息 """
+    cursor, conn = get_cursor()
+    email = get_email(email)
+    sql = 'select `value` from info where `key`=%s and `email`=%s'
+    params = (key, email)
+    r = execute_sql(sql, params)
+    result = r[0][0] if len(r) == 1 else None
+    return result
+
+def add_global_info(key, value):
+    if get_global_info(key):
+        sql = "update info set `value`=%s where `key`=%s and `email`='global'"
+        params = (value, key)
+    else:
+        sql = "insert info(`key`, `value`) VALUES(%s, %s);"
+        params = (key, value)
+    execute_sql(sql, params, True)
+
+def get_global_info(key):
+    sql = "select `value` from info where `key`=%s and `email`=%s"
+    params = (key, 'global')
+    r = execute_sql(sql, params)
+    return r[0][0] if len(r) == 1 else None
+
+def get_user_info(frm):
+    """ 获取用户信息 """
+    nick = get_nick(frm)
+    isonline = '在线' if is_online(frm) else '离线'
+    status = get_status(frm)
+    status = status[1] if len(status) == 2 else None
+    status = status if status else isonline
+    join_time = get_info('join_time', frm)
+    join_time = join_time if join_time else '创造之始'
+    last_say = get_info('last_say', frm)
+    last_say = last_say if last_say else '从未发言'
+    last_change_nick = get_info('last_change_nick', frm)
+    last_change_nick = last_change_nick if last_change_nick else '从未修改'
+    change_nick_times = get_info('change_nick_times', frm)
+    change_nick_times = change_nick_times if change_nick_times else 0
+    last_online_time = get_info('last_online', frm)
+    last_online_time = last_online_time if last_online_time else join_time
+    level = "管理员" if get_email(frm) in ADMINS else "成员"
+    mode = get_info('mode', frm)
+    mode = mode if mode else 'talk'
+    mode = MODES[mode]
+    result = dict(nick = nick, isonline = isonline, level = level,
+                  status = status, join_time = join_time, mode = mode,
+                  last_say = last_say, last_change_nick = last_change_nick,
+                  last_online_time = last_online_time,
+                  change_nick_times = change_nick_times)
+    return result
 
 def get_date(date):
     date = datetime.strptime(date, '%Y-%m-%d %H:%M:%S.%f')
@@ -266,7 +335,6 @@ def get_date(date):
 
 
 def format(values):
-    import string
     t = string.Template("""$date [$nick] $content""")
     values['nick'] = get_nick(values.get('frm'))
     if values['to']!='all':
@@ -275,3 +343,11 @@ def format(values):
     values['date'] = values['date']
 
     return t.substitute(values)
+
+user_info_template = string.Template("""昵称: $nick         状态: $status
+权限: $level        当前模式: $mode
+更改昵称次数: $change_nick_times
+上次更改昵称时间: $last_change_nick
+加入时间: $join_time
+最后发言: $last_say
+最后在线时间: $last_online_time""")

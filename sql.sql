@@ -26,6 +26,18 @@ create table if not exists members(
     index(nick)
 )character set utf8;
 
+-- 创建信息数据库 info
+create table if not exists info(
+    id INT NOT NULL AUTO_INCREMENT,
+    email VARCHAR(100) NOT NULL DEFAULT "global",
+    `key` VARCHAR(255) NOT NULL,
+    value TEXT NOT NULL,
+    createdate TIMESTAMP NOT NULL,
+    PRIMARY KEY(id),
+    index(`key`),
+    index(email)
+    )character set utf8;
+
 
 -- 创建聊天记录表 history
 -- key              type              default

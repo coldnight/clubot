@@ -27,21 +27,28 @@
 # 2012-12-21 15:14
 #   * 修改代码结构
 #
+# 2012-12-24 15:30
+#   * 修改ls命令处理方式
+#   + 添加cd命令用于模式处理
+#
 import re
 import time
 import traceback
 
 from mysql import get_members, get_nick, get_member, edit_member, add_history
-from mysql import is_online, get_history, logger, del_member, get_email
-from mysql import get_status, change_status
-from settings import __version__, LOGPATH, ADMINS, USER, STATUS
+from mysql import is_online, get_history, del_member, get_email
+from mysql import add_global_info, get_user_info, get_status
+from mysql import user_info_template, add_info, get_info
+from settings import __version__, LOGPATH, ADMINS, STATUS, MODES
 from util import http_helper, run_code, paste_code, add_commends
-from util import get_code_types, Complex
+from util import get_code_types, Complex, get_logger
 from city import cityid
 
 from pyxmpp2.presence import Presence
 from pyxmpp2.message import Message
 from pyxmpp2.jid import JID
+
+logger = get_logger()
 
 class CommandHandler(object):
     """
@@ -52,8 +59,39 @@ class CommandHandler(object):
         所有命令须返回Message/Presence的实例或实例列表
     """
     _cache = {}
+    _modes = MODES
     def ls(self, stanza, *args):
-        """列出所有成员"""
+        """列出成员/模式/允许的代码,发送-ls help查看用法"""
+        mode = args[0] if len(args) >= 1 else None
+        if mode in ['user', 'u', 'users'] or not mode:
+            if len(args) > 1:
+                nicks = args[1:]
+                self._show_nicks(stanza, nicks)
+            else:
+                self._ls_users(stanza)
+        elif mode in ['ct', 'codetype', 'code type', 'codetypes',
+                      'code types']:
+            self._ct(stanza)
+        elif mode in ['m', 'mode', 'modes']:
+            body = ''
+            for m in self._modes:
+                body += "{0}:{1}\n".format(m, self._modes[m])
+            self._send_cmd_result(stanza, body.strip())
+        else:
+            members = get_members()
+            nicks = [m.get('nick') for m in members]
+            if mode in nicks:
+                self._show_nicks(stanza, [mode])
+            else:
+                body = 'Useage: \n\
+                        -ls [u|user] [nick]   查看用户\n\
+                        -ls nick              查看nick的详细信息\n\
+                        -ls [ct|codetype]     查看允许的代码类型\n\
+                        -ls [m|mode]          列出所有模式'
+                self._send_cmd_result(stanza, body)
+
+    def _ls_users(self, stanza):
+        """ 列出成员 """
         frm = stanza.from_jid
         femail = get_email(frm)
         members = get_members()
@@ -75,6 +113,17 @@ class CommandHandler(object):
         body.insert(0, 'Pythoner Club 所有成员(** 表示你自己, * 表示在线):')
         self._send_cmd_result(stanza, '\n'.join(body))
 
+    def cd(self, stanza, *args):
+        """ 进入模式,发送-ls m查看所支持的模式 """
+        mode = args[0] if len(args) == 1 else None
+        if not mode or mode not in self._modes:
+            body = "Useage:\n\
+                    -cd MODE    进入MODE模式,使用-ls m查看允许的模式"
+        else:
+            add_info('mode', mode, stanza.from_jid)
+            body = " 你已进入{0}".format(self._modes[mode])
+
+        self._send_cmd_result(stanza, body)
 
     def trans(self, stanza, *args):
         """中日英翻译,默认英-汉翻译"""
@@ -122,7 +171,7 @@ class CommandHandler(object):
 
 
     def code(self, stanza, *args):
-        """<type> <code> 贴代码,使用-ct 查看允许的代码类型"""
+        """<type> <code> 贴代码,使用-ls ct 查看允许的代码类型"""
         if len(args) <= 1: return self.help(stanza, 'code')
         nick = get_nick(stanza.from_jid)
         typ = args[0]
@@ -147,7 +196,7 @@ class CommandHandler(object):
         send_all_msg(stanza, self._stream, body, True)
         self._send_cmd_result(stanza, result)
 
-    def ct(self, stanza, *args):
+    def _ct(self, stanza, *args):
         """返回允许的代码类型"""
         if self._cache.get('typs'):
             body = self._cache.get('typs')
@@ -214,6 +263,19 @@ class CommandHandler(object):
         except:
             self._send_cmd_result(stanza, u'bug 提交失败,稍候再试,感谢支持!!')
 
+    def _show_nicks(self, stanza, nicks):
+        """ 显示所有昵称的信息 """
+        emails = [get_member(nick = n) for n in nicks]
+        infos = [self._whois(e) for e in emails]
+        body = '\n\n'.join(infos)
+        self._send_cmd_result(stanza, body)
+
+
+    def _whois(self, frm):
+        result = get_user_info(frm)
+        body = user_info_template.substitute(result)
+        return body
+
 
     def version(self, stanza, *args):
         """显示版本信息"""
@@ -271,6 +333,7 @@ class CommandHandler(object):
 
 
     def _parse_args(self, cmd):
+        cmd = cmd.strip()
         splitbody = cmd.split('\n')
         if len(splitbody) >= 2:
             cmdline = (splitbody[0], '\n'.join(splitbody[1:]))
@@ -342,7 +405,7 @@ class AdminCMDHandle(CommandHandler):
             status = ' '.join(args)
         else:
             status = STATUS
-        change_status(USER, status, '')
+        add_global_info('status', status)
         p = Presence(status = status)
         self._stream.send(p)
 
@@ -395,6 +458,8 @@ def send_all_msg(stanza, stream, body, system=False):
     frm = stanza.from_jid
     nick = get_nick(frm)
     tos = get_members(frm)
+    tos = [to for to in tos
+           if get_info('mode', to) == 'talk' or not get_info('mode', to)]
     add_history(frm, 'all', body)
     logger.info(u"{0} send message: {1}".format(stanza.from_jid, body))
     if cityid(body.strip()):

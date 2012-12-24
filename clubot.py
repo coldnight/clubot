@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 #
-# Author : cold night
+# Author : cold
 # Email  : wh_linux@126.com
 #
 # 2012-10-10 12:00
@@ -37,11 +37,14 @@ from pyxmpp2.roster import RosterReceivedEvent
 from pyxmpp2.interfaces import XMPPFeatureHandler
 from pyxmpp2.interfaces import presence_stanza_handler, message_stanza_handler
 from pyxmpp2.ext.version import VersionProvider
+
 from settings import USER,PASSWORD, DEBUG, PIDPATH, __version__, STATUS, IMPORT
+
 from plugin.mysql import add_member, del_member, get_member, change_status, get_nick
-from plugin.mysql import empty_status, get_members, handler, level, get_status
+from plugin.mysql import empty_status, get_members
+from plugin.mysql import get_global_info
 from plugin.cmd import send_all_msg, send_command
-from plugin.util import welcome, new_member
+from plugin.util import welcome, new_member, get_logger, level, handler, now
 
 
 
@@ -177,7 +180,7 @@ class BotChat(EventHandler, XMPPFeatureHandler):
 
     @event_handler(RosterReceivedEvent)
     def handle_roster_received(self, event):
-        dbstatus = get_status(USER)
+        dbstatus = get_global_info('status')
         if not dbstatus:
             status = STATUS
         else:
@@ -257,6 +260,7 @@ def main():
             bot.disconnect()
             bot.trytimes += 1
             sleeptime = 10 * bot.trytimes
+            logger = get_logger()
             logger.info('Connect failed, will retry in {0}s of '
                         '{1} times'.format(sleeptime, bot.trytimes))
             time.sleep(sleeptime)
@@ -267,7 +271,6 @@ def restart(signum, stack):
     PID = int(open(PIDPATH, 'r').read())
     pf = os.path.join(os.path.dirname(__file__), __file__)
     cmd = r'kill -9 {0} && python {1} '.format(PID, pf)
-    print cmd
     subprocess.Popen(cmd, stdin = subprocess.PIPE, stdout = subprocess.PIPE,
                      stderr = subprocess.PIPE, shell = True)
 
