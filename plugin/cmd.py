@@ -100,7 +100,7 @@ class CommandHandler(object):
         body = []
         for m in members:
             email = m.get('email')
-            r = '{0} <{1}>'.format(m.get('nick'), m.get('email'))
+            r = '{0}'.format(m.get('nick'))
             if email == femail:
                 r = '** ' + r
             elif is_online(email):
