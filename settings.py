@@ -14,11 +14,11 @@ USER = 'pythonerclub@gmail.com'
 
 PASSWORD = ''
 
-DEBUG = True
+DEBUG = False
 
 IMPORT = False # 如果数据库中有而角色中无则添加好友
 
-__version__ = '0.1.6 alpha-threading'
+__version__ = '0.2.0 alpha-threading'
 
 PIDPATH = r'logs/clubot.pid'
 
