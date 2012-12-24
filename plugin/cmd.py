@@ -85,6 +85,7 @@ class CommandHandler(object):
                 self._show_nicks(stanza, [mode])
             else:
                 body = 'Useage: \n\
+                        -ls                   查看所有成员\n\
                         -ls [u|user] [nick]   查看用户\n\
                         -ls nick              查看nick的详细信息\n\
                         -ls [ct|codetype]     查看允许的代码类型\n\
