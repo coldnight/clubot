@@ -6,6 +6,7 @@
 #   Date    :   12/12/25 16:40:36
 #   Desc    :   消息处理
 #
+import threading
 from pyxmpp2.jid import JID
 from pyxmpp2.message import Message
 from pyxmpp2.presence import Presence
@@ -120,9 +121,13 @@ class MessageBus(object):
         email = get_email(stanza.from_jid)
         self.logger.info("{0} run command {1}".format(stanza.from_jid, body))
         if email in ADMINS:
-            self.admin_cmd_handler._run_cmd(stanza, body)
+            target = self.admin_cmd_handler._run_cmd
         else:
-            self.cmd_handler._run_cmd(stanza, body)
+            target = self.cmd_handler._run_cmd
+        t = threading.Thread(target = target, name='run_cmd',
+                             args = (stanza, body))
+        t.setDaemon(True)
+        t.start()
 
     def send_status(self, statustext, to = None):
         if to:
