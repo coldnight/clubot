@@ -73,7 +73,7 @@ def get_members(frm = None):
 
 def get_members_info():
     emails = get_members()
-    result = []
+    result = {}
     for e in emails:
         resources = get_resource(e)
         isonline = is_online(e)

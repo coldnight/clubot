@@ -62,7 +62,6 @@ class BotChat(EventHandler, XMPPFeatureHandler):
 
         settings["password"] = PASSWORD
         version_provider = VersionProvider(settings)
-        self.do_quit = False
         self.connected = False
         self.client = Client(my_jid, [self, version_provider], settings)
         self.logger = get_logger()
@@ -74,7 +73,6 @@ class BotChat(EventHandler, XMPPFeatureHandler):
         self.client.run()
 
     def disconnect(self):
-        self.do_quit = True
         self.client.disconnect()
 
     @presence_stanza_handler("subscribe")

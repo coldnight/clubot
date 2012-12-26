@@ -120,9 +120,9 @@ class MessageBus(object):
         email = get_email(stanza.from_jid)
         self.logger.info("{0} run command {1}".format(stanza.from_jid, body))
         if email in ADMINS:
-            self.admin_cmd_handler.run_cmd(stanza, body)
+            self.admin_cmd_handler._run_cmd(stanza, body)
         else:
-            self.cmd_handler.run_cmd(stanza, body)
+            self.cmd_handler._run_cmd(stanza, body)
 
     def send_status(self, statustext, to = None):
         if to:
