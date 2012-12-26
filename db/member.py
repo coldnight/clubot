@@ -88,7 +88,7 @@ def get_members_info():
                                 isonline=isonline, nick = nick))
              for r in resources]
         else:
-            result.update(dict(email = e, resource = None, status = status,
+            result.append(dict(email = e, resource = None, status = status,
                                isonline = isonline, nick = nick))
     return result
 
