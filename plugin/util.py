@@ -181,7 +181,7 @@ class Complex():
 
 def welcome(frm):
     r = u"欢迎加入我们\n你的昵称是{0}\n可以使用{1}更改你的昵称\n"
-    r += u"可以使用help查看帮助"
+    r += u"可以使用发送help查看帮助"
     r = r.format(frm.local, "-nick")
     return r
 

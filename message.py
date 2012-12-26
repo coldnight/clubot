@@ -95,6 +95,10 @@ class MessageBus(object):
         """ 给除了自己的所有成员发送消息 """
         if cityid(body.strip()):
             return self.send_command(stanza, '-_tq ' + body.strip())
+        if body.strip() == 'help':
+            return self.send_command(stanza, '-help')
+        if body.strip() == 'ping':
+            return self.send_command(stanza, '-_ping')
         add_history(stanza.from_jid, 'all', body)
         members = get_members(stanza.from_jid)
         self.logger.info("{0} send message {1} to {2!r}"
@@ -131,9 +135,9 @@ class MessageBus(object):
     def send_subscribe(self, jid):
         """ 发送订阅 """
         #TODO May be remove resource from jid
-        p1 = Presence(from_jid = self.my_jid, to_jid = jid,
+        p1 = Presence(from_jid = self.bot_jid, to_jid = jid,
                       stanza_type = 'subscribe')
-        p = Presence(from_jid = self.my_jid, to_jid = jid,
+        p = Presence(from_jid = self.bot_jid, to_jid = jid,
                      stanza_type = 'subscribed')
         self._stream.send(p)
         self._stream.send(p1)

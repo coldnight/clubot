@@ -19,7 +19,6 @@
 
 import logging
 import sys, os
-import random
 import time
 import signal
 import subprocess
@@ -32,7 +31,7 @@ from pyxmpp2.client import Client
 from pyxmpp2.settings import XMPPSettings
 from pyxmpp2.interfaces import EventHandler, event_handler
 from pyxmpp2.streamevents import DisconnectedEvent,ConnectedEvent
-from pyxmpp2.roster import RosterReceivedEvent
+from pyxmpp2.roster import RosterReceivedEvent, RosterUpdatedEvent
 from pyxmpp2.interfaces import XMPPFeatureHandler
 from pyxmpp2.interfaces import presence_stanza_handler, message_stanza_handler
 from pyxmpp2.ext.version import VersionProvider
@@ -56,6 +55,7 @@ class BotChat(EventHandler, XMPPFeatureHandler):
                             "software_version": __version__,
                             "software_os": "Linux",
                             "tls_verify_peer": False,
+                            "full_name":"PythonerClub",
                             "starttls": True,
                             "ipv6":False,
                             })
@@ -80,25 +80,28 @@ class BotChat(EventHandler, XMPPFeatureHandler):
     @presence_stanza_handler("subscribe")
     def handle_presence_subscribe(self, stanza):
         self.logger.info(u"{0} join us".format(stanza.from_jid))
-        frm = stanza.from_jid.bare()
+        frm = stanza.from_jid
         presence = Presence(to_jid = frm, stanza_type = "subscribe")
-        message = Message(to_jid = frm, body = welcome(frm), stanza_type=stanza.stanza_type)
         add_member(frm)
-        r =[stanza.make_accept_response(), presence, message]
+        set_online(frm, stanza.show)
+        r =[stanza.make_accept_response(), presence]
         self.message_bus.send_sys_msg(stanza, new_member(frm))
+        self.message_bus.send_back_msg(stanza, welcome(frm))
         return r
 
     @presence_stanza_handler("subscribed")
     def handle_presence_subscribed(self, stanza):
         self.logger.info(u"{0!r} accepted our subscription request"
                                                     .format(stanza.from_jid))
-        frm = stanza.from_jid.bare()
+        frm = stanza.from_jid
         presence = Presence(to_jid = frm, stanza_type = "subscribe")
-        message = Message(to_jid = frm, body = welcome(frm))
         add_member(frm)
-        r =[presence, message]
+        r =[presence]
         add_member(frm)
+        set_online(frm, stanza.show)
+        r =[stanza.make_accept_response(), presence]
         self.message_bus.send_sys_msg(stanza, new_member(frm))
+        self.message_bus.send_back_msg(stanza, welcome(frm))
         return r
 
     @presence_stanza_handler("unsubscribe")
@@ -169,6 +172,10 @@ class BotChat(EventHandler, XMPPFeatureHandler):
                      stanza_type = 'subscribed')
         self.stream.send(p)
         self.stream.send(p1)
+
+    @event_handler(RosterUpdatedEvent)
+    def handle_roster_update(self, event):
+        item = event.item
 
     @event_handler(RosterReceivedEvent)
     def handle_roster_received(self, event):

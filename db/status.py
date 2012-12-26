@@ -29,7 +29,7 @@ def get_resource(frm):
 
 def set_online(frm, statustext):
     email = get_email(frm)
-    resource = frm.resource
+    resource = frm.resource if frm.resource else ''
     with MySQLContext('status') as op:
         if get_status(frm):
             set_dict = dict(status=1)

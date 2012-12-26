@@ -32,7 +32,6 @@
 #   + 添加cd命令用于模式处理
 #   + 添加me命令用于查看自己的信息
 #
-import re
 import time
 import traceback
 
@@ -60,7 +59,7 @@ class CommandHandler(object):
     _cache = {}
     _modes = MODES
     def __init__(self, message_bus):
-        self.message_bus = message_bus
+        self._message_bus = message_bus
 
     def ls(self, stanza, *args):
         """列出成员/模式/允许的代码,发送-ls help查看用法"""
@@ -137,7 +136,7 @@ class CommandHandler(object):
         tq = Complex()
         body = tq.tq(''.join([x for x in args]))
         self._send_cmd_result(stanza, body)
-        self.message_bus.send_all_msg(stanza, body)
+        self._message_bus.send_all_msg(stanza, body)
 
     def _ping(self, stanza, *args):
         self._send_cmd_result(stanza, 'is ok, I am online')
@@ -155,7 +154,7 @@ class CommandHandler(object):
         if not receiver:
             self._send_cmd_result(stanza, "%s 用户不存在" % nick)
         else:
-            self.message_bus.send_private_msg(stanza, receiver, body)
+            self._message_bus.send_private_msg(stanza, receiver, body)
 
 
     def nick(self, stanza, *args):
@@ -167,7 +166,7 @@ class CommandHandler(object):
         r = edit_member(frm, nick = nick)
         if r:
             body = "%s 更改昵称为 %s" % (oldnick, nick)
-            self.message_bus.send_sys_msg(stanza, body)
+            self._message_bus.send_sys_msg(stanza, body)
             self._send_cmd_result(stanza, u'你的昵称现在的已经已经更改为 {0}'.format(nick))
         else:
             self._send_cmd_result(stanza, '昵称已存在')
@@ -183,7 +182,7 @@ class CommandHandler(object):
         poster = "Pythoner Club: %s" % nick
         r = paste_code(poster,typ, codes)
         if r:
-            self.message_bus.send_all_msg(stanza, r)
+            self._message_bus.send_all_msg(stanza, r)
             self._send_cmd_result(stanza, r)
         else:
             self._send_cmd_result(stanza, '代码服务异常,通知管理员')
@@ -196,7 +195,7 @@ class CommandHandler(object):
         result = run_code(code)
         body = u'{0} 执行代码:\n{1}\n'.format(nick, code)
         body += result
-        self.message_bus.send_sys_msg(stanza, body)
+        self._message_bus.send_sys_msg(stanza, body)
         self._send_cmd_result(stanza, result)
 
     def _ct(self, stanza, *args):
@@ -213,7 +212,7 @@ class CommandHandler(object):
         """邀请好友加入 eg. -it <yourfirendemail>"""
         if len(args) < 1:return self.help(stanza, 'invite')
         to = args[0]
-        self.message_bus.send_subscribe(JID(to))
+        self._message_bus.send_subscribe(JID(to))
 
     def help(self, stanza, *args):
         """显示帮助"""
@@ -294,7 +293,7 @@ class CommandHandler(object):
 
     def _send_cmd_result(self, stanza, body):
         """返回命令结果"""
-        self.message_bus.send_back_msg(stanza, body)
+        self._message_bus.send_back_msg(stanza, body)
 
     def _get_cmd(self, name = None):
         if name:
@@ -329,7 +328,7 @@ class CommandHandler(object):
         cmds.append('_ping')
         cmds.append('_tq')
         if c not in cmds:
-            self.message_bus.send_all_msg(stanza, body)
+            self._message_bus.send_all_msg(stanza, body)
             return
         try:
             logger.info('%s run cmd %s', email, c)
@@ -339,8 +338,8 @@ class CommandHandler(object):
             errorinfo = traceback.format_exc()
             body = u'{0} run command {1} happend an error:\
                     {2}'.format(get_nick(email), c, errorinfo)
-            self.message_bus.send_to_admin(stanza, body)
-            self.message_bus.send_back_msg(stanza, c + ' 命令异常,已通知管理员')
+            self._message_bus.send_to_admin(stanza, body)
+            self._message_bus.send_back_msg(stanza, c + ' 命令异常,已通知管理员')
             return
 
         return m
@@ -375,7 +374,7 @@ class AdminCMDHandler(CommandHandler):
         for e in emails:
             jid = JID(e)
             del_member(jid)
-            self.message_bus.send_unsubscribe(jid)
+            self._message_bus.send_unsubscribe(jid)
 
     def cs(self, stanza, *args):
         """ 更改状态 """
@@ -384,5 +383,5 @@ class AdminCMDHandler(CommandHandler):
         else:
             status = STATUS
         add_global_info('status', status)
-        self.message_bus.send_status(status)
+        self._message_bus.send_status(status)
 
