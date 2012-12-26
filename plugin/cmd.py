@@ -322,7 +322,7 @@ class CommandHandler(object):
         cmdline = tmp[0].split(' ') + tmp[1:]
         return cmdline[0], cmdline[1:]
 
-    def run_cmd(self, stanza, body):
+    def _run_cmd(self, stanza, body):
         """获取命令"""
         cmd = body[1:]
         c, args = self._parse_args(cmd)
