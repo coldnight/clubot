@@ -85,7 +85,7 @@ class BotChat(EventHandler, XMPPFeatureHandler):
         message = Message(to_jid = frm, body = welcome(frm), stanza_type=stanza.stanza_type)
         add_member(frm)
         r =[stanza.make_accept_response(), presence, message]
-        self.message_bus.send_sys_msg.send_all_msg(stanza, new_member(frm))
+        self.message_bus.send_sys_msg(stanza, new_member(frm))
         return r
 
     @presence_stanza_handler("subscribed")
