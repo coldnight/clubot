@@ -132,19 +132,14 @@ class DatabaseOp(object):
         fields = self.cursor.fetchall()
         return Field(fields)
 
-    def __del__(self):
-        self.cursor.close()
-        if self.commit: self.conn.commit()
-
 
 class MySQLContext:
-    conn  = mysqldb.Connection(host=config.DB_HOST,
-                               port = config.DB_PORT,
-                               user = config.DB_USER,
-                               passwd = config.DB_PASSWD,
-                               db = config.DB_NAME, charset = 'utf8')
-
     def __init__(self, table):
+        self.conn = mysqldb.Connection(host=config.DB_HOST,
+                                    port = config.DB_PORT,
+                                    user = config.DB_USER,
+                                    passwd = config.DB_PASSWD,
+                                    db = config.DB_NAME, charset = 'utf8')
         self._table = table
         self._op = DatabaseOp(self.conn, table)
 
@@ -152,7 +147,10 @@ class MySQLContext:
         return self._op
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        pass
+        if self._op.commit:
+            self.conn.commit()
+        self._op.cursor.close()
+        self.conn.close()
 
     @classmethod
     def get_op(cls, table):
