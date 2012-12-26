@@ -23,7 +23,6 @@ import random
 import time
 import signal
 import subprocess
-import threading
 
 import pyxmpp2
 from pyxmpp2.jid import JID
@@ -40,12 +39,12 @@ from pyxmpp2.ext.version import VersionProvider
 
 from settings import USER,PASSWORD, DEBUG, PIDPATH, __version__, STATUS, IMPORT
 
-from plugin.mysql import add_member, del_member, get_member, change_status, get_nick
-from plugin.mysql import empty_status, get_members
-from plugin.mysql import get_global_info
-from plugin.cmd import send_all_msg, send_command
-from plugin.util import welcome, new_member, get_logger, level, handler, now
+from db.member import add_member, del_member, get_member, get_members, get_nick
+from db.status import set_offline, empty_status, set_online
+from db.info import get_global_info
+from plugin.util import welcome, new_member, get_logger
 
+from message import MessageBus
 
 
 class BotChat(EventHandler, XMPPFeatureHandler):
@@ -66,14 +65,13 @@ class BotChat(EventHandler, XMPPFeatureHandler):
         self.do_quit = False
         self.connected = False
         self.client = Client(my_jid, [self, version_provider], settings)
+        self.logger = get_logger()
         self.trytimes = 0
         empty_status()
 
     def run(self):
         self.client.connect()
-        logging.info(u"Connected")
         self.client.run()
-        logging.info(u"Looping")
 
     def disconnect(self):
         self.do_quit = True
@@ -81,18 +79,18 @@ class BotChat(EventHandler, XMPPFeatureHandler):
 
     @presence_stanza_handler("subscribe")
     def handle_presence_subscribe(self, stanza):
-        logging.info(u"{0} join us".format(stanza.from_jid))
+        self.logger.info(u"{0} join us".format(stanza.from_jid))
         frm = stanza.from_jid.bare()
         presence = Presence(to_jid = frm, stanza_type = "subscribe")
         message = Message(to_jid = frm, body = welcome(frm), stanza_type=stanza.stanza_type)
         add_member(frm)
         r =[stanza.make_accept_response(), presence, message]
-        send_all_msg(stanza, self.stream, new_member(frm), True)
+        self.message_bus.send_sys_msg.send_all_msg(stanza, new_member(frm))
         return r
 
     @presence_stanza_handler("subscribed")
     def handle_presence_subscribed(self, stanza):
-        logging.info(u"{0!r} accepted our subscription request"
+        self.logger.info(u"{0!r} accepted our subscription request"
                                                     .format(stanza.from_jid))
         frm = stanza.from_jid.bare()
         presence = Presence(to_jid = frm, stanza_type = "subscribe")
@@ -100,57 +98,50 @@ class BotChat(EventHandler, XMPPFeatureHandler):
         add_member(frm)
         r =[presence, message]
         add_member(frm)
-        send_all_msg(stanza, self.stream, new_member(frm), True)
+        self.message_bus.send_sys_msg(stanza, new_member(frm))
         return r
 
     @presence_stanza_handler("unsubscribe")
     def handle_presence_unsubscribe(self, stanza):
-        logging.info(u"{0} canceled presence subscription"
+        self.logger.info(u"{0} canceled presence subscription"
                                                     .format(stanza.from_jid))
         presence = Presence(to_jid = stanza.from_jid.bare(),
                                                     stanza_type = "unsubscribe")
         nick = get_nick(stanza.from_jid)
-        send_all_msg(stanza,self.stream, u'{0} 离开群'.format(nick), True)
+        self.message_bus.send_sys_msg(stanza, u'{0} 离开群'.format(nick))
         del_member(stanza.from_jid.bare())
         r =[stanza.make_accept_response(), presence]
         return r
 
     @presence_stanza_handler("unsubscribed")
     def handle_presence_unsubscribed(self, stanza):
-        logging.info(u"{0!r} acknowledged our subscrption cancelation"
+        self.logger.info(u"{0!r} acknowledged our subscrption cancelation"
                                                     .format(stanza.from_jid))
         del_member(stanza.from_jid.bare())
         return True
 
     @presence_stanza_handler(None)
     def handle_presence_available(self, stanza):
-        logging.info(r"{0} has been online".format(stanza.from_jid))
-        show = stanza.show
-        frm = stanza.from_jid
-        change_status(frm, 1, show)
+        self.logger.info(r"{0} has been online".format(stanza.from_jid))
+        set_online(stanza.from_jid, stanza.show)
+        self.message_bus.send_offline_message(stanza)
 
     @presence_stanza_handler("unavailable")
     def handle_presence_unavailable(self, stanza):
-        logging.info(r"{0} has been offline".format(stanza.from_jid))
-        show = stanza.show
+        self.logger.info(r"{0} has been offline".format(stanza.from_jid))
         frm = stanza.from_jid
-        change_status(frm, 0, show)
+        set_offline(frm)
 
     @message_stanza_handler()
     def handle_message(self, stanza):
         body = stanza.body
-        name = stanza.from_jid.bare().as_string()
         if not body: return True
+        self.logger.info("receive message '{0}' from {1}"
+                                        .format(body, stanza.from_jid))
         if body.startswith('$') or body.startswith('-'):
-            target, name = (send_command,
-            '{0}_run_cmd_{1}'.format(name, random.random()))
+            self.message_bus.send_command(stanza, body)
         else:
-            target, name = (send_all_msg,
-                            '{0}_send_msg_{1}'.format(name, random.random()))
-        t = threading.Thread(name=name,target=target,
-                             args=(stanza, self.stream, body))
-        t.setDaemon(True)
-        t.start()
+            self.message_bus.send_all_msg(stanza, body)
         return True
 
     @event_handler(DisconnectedEvent)
@@ -159,6 +150,7 @@ class BotChat(EventHandler, XMPPFeatureHandler):
 
     @event_handler(ConnectedEvent)
     def handle_connected(self, event):
+        self.message_bus = MessageBus(self.my_jid, self.stream)
         self.connected = True
         self.trytimes = 0
 
@@ -188,8 +180,8 @@ class BotChat(EventHandler, XMPPFeatureHandler):
         p = Presence(status=status)
         self.client.stream.send(p)
         ret = [x.jid.bare() for x in self.roster if x.subscription == 'both']
-        logging.info(' -- roster:{0}'.format(ret))
-        members = [m.get('email') for m in get_members()]
+        self.logger.info(' -- roster:{0}'.format(ret))
+        members = [m for m in get_members()]
         [add_member(frm) for frm in ret if not get_member(frm)]
         if IMPORT:
             [self.invite_member(JID(m)) for m in members if JID(m) not in ret]
@@ -198,20 +190,8 @@ class BotChat(EventHandler, XMPPFeatureHandler):
 
     @event_handler()
     def handle_all(self, event):
-        logging.info(u"-- {0}".format(event))
+        self.logger.info(u"-- {0}".format(event))
 
-    def send_msg(self, msg, to=None):
-        if to:
-            if isinstance(to, (list, tuple)):
-                tos = to
-            elif isinstance(to, (str, unicode)):
-                tos = [to]
-        else:
-            tos = get_members(self.my_jid)
-        msgs = [Message(to_jid=JID(to),
-                        stanza_type='normal',
-                        body=msg) for to in tos]
-        [self.stream.send(msg) for msg in msgs]
 
 def main():
     if not PASSWORD:
@@ -241,13 +221,6 @@ def main():
         except OSError, e:
             logging.error("Daemon started failed: %d (%s)", e.errno, e.strerror)
             os.exit(1)
-
-    handler.setLevel(level)
-    for logger in ("pyxmpp2.IN", "pyxmpp2.OUT"):
-        logger = logging.getLogger(logger)
-        logger.setLevel(level)
-        logger.addHandler(handler)
-        logger.propagate = False
     while True:
         bot = BotChat()
         try:
