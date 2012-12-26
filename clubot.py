@@ -133,6 +133,9 @@ class BotChat(EventHandler, XMPPFeatureHandler):
     def handle_presence_unavailable(self, stanza):
         self.logger.info(r"{0} has been offline".format(stanza.from_jid))
         frm = stanza.from_jid
+        if frm.bare().as_string == USER:
+            self.connected = False
+            self.disconnect()
         set_offline(frm)
 
     @message_stanza_handler()
