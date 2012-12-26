@@ -106,7 +106,7 @@ class CommandHandler(object):
             elif m.get('isonline'):
                 r = '*{0}'.format(m.get('nick'))
                 if m.get('status'):
-                    r += ' ' + r.get('status')
+                    r += ' ' + m.get('status')
             else:
                 r = '  ' + m.get('nick')
             body.append(r)
