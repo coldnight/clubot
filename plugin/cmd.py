@@ -98,8 +98,11 @@ class CommandHandler(object):
         femail = get_email(frm)
         members = get_members_info()
         body = []
+        els = []
         for m in members:
             email = m.get('email')
+            if email in els: continue
+            els.append(email)
             if email == femail:
                 r = '**{0}'.format(m.get('nick'))
             elif m.get('isonline'):
