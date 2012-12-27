@@ -66,11 +66,11 @@ class MessageBus(object):
         if is_online(to):
             mode = get_info('mode', to)
             if mode == 'talk' or not mode:
-                resource = get_resource(to)
-                tos = [JID(to + "/" + r) for r in resource]
-                self.logger.debug("send '{0}' to {1!r}".format(body, tos))
-                [self._stream.send(self.make_message(t, stanza.stanza_type,
-                                                     body)) for t in tos]
+                if isinstance(to, (str, unicode)):
+                    to = JID(to)
+                self.logger.debug("send '{0}' to {1!r}".format(body, to))
+                typ = stanza.stanza_type
+                self._stream.send(self.make_message(to, typ, body))
         else:
             body = NOW() + ' ' + body
             self.logger.debug("store offline message'{0}' for {1!r}"
