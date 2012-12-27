@@ -10,7 +10,7 @@ sys.setdefaultencoding('utf-8')
 
 ADMINS = ['coldnight.linux@gmail.com']
 
-USER = 'pythonerclub@gmail.com'
+USER = 'pythonerclub@jabber.org'
 
 PASSWORD = ''
 
@@ -39,10 +39,3 @@ DB_PASSWD = ''
 STATUS = u"Pythoner Club Linux/Vim/Python 技术交流"
 
 MODES  = dict(talk = '聊天模式', quiet = '安静模式(不接收消息)')
-
-# DEBUG:10
-# INFO : 20
-# WARNING :30
-# ERROR : 40
-# CRITICAL: 50
-LOGLEVEL = 10
