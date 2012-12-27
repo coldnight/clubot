@@ -97,7 +97,8 @@ class CommandHandler(object):
         frm = stanza.from_jid
         femail = get_email(frm)
         members = get_members_info()
-        body = []
+        onlinebody = []
+        offlinebody = []
         els = []
         online_num = 0
         total = len(members)
@@ -108,16 +109,22 @@ class CommandHandler(object):
             if email == femail:
                 r = '**{0}'.format(m.get('nick'))
                 online_num += 1
+                onlinebody.append(r)
             elif m.get('isonline'):
                 online_num += 1
                 r = '*{0}'.format(m.get('nick'))
                 if m.get('status'):
                     r += ' ' + m.get('status')
+                onlinebody.append(r)
             else:
                 r = '  ' + m.get('nick')
-            body.append(r)
-        body = sorted(body, key = lambda k:k[1], reverse=False)
+                offlinebody.append(r)
+        onlinebody = sorted(onlinebody, key = lambda k:k[1], reverse=False)
+        offlinebody = sorted(offlinebody, key = lambda k:k[1], reverse=False)
+        body = []
         body.insert(0, 'Pythoner Club 所有成员(** 表示你自己, * 表示在线):')
+        body.extend(onlinebody)
+        body.extend(offlinebody)
         body.append('共列出 {0} 位成员 {1} 位在线'.format(total, online_num))
         self._send_cmd_result(stanza, '\n'.join(body))
 
