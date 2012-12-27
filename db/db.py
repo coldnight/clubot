@@ -133,6 +133,15 @@ class DatabaseOp(object):
         fields = self.cursor.fetchall()
         return Field(fields)
 
+    def escape(self, value):
+        """ 转义MySQL """
+        if isinstance(value, (tuple, list)):
+            return [self.escape(v) for v in value]
+        elif isinstance(value, (str, unicode)):
+            return escape_string(value)
+        else:
+            return value
+
 
 class MySQLContext:
     def __init__(self, table):

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding:utf-8 -*-
 #
-#   Author  :   wh
+#   Author  :   cold
 #   E-mail  :   wh_linux@126.com
 #   Date    :   12/12/25 16:38:07
 #   Desc    :   聊天历史

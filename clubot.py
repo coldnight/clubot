@@ -28,7 +28,7 @@ from pyxmpp2.jid import JID
 from pyxmpp2.presence import Presence
 from pyxmpp2.client import Client
 from pyxmpp2.settings import XMPPSettings
-from pyxmpp2.interfaces import EventHandler, event_handler
+from pyxmpp2.interfaces import EventHandler, event_handler, QUIT
 from pyxmpp2.streamevents import DisconnectedEvent,ConnectedEvent
 from pyxmpp2.roster import RosterReceivedEvent, RosterUpdatedEvent
 from pyxmpp2.interfaces import XMPPFeatureHandler
@@ -72,6 +72,7 @@ class BotChat(EventHandler, XMPPFeatureHandler):
 
     def disconnect(self):
         self.client.disconnect()
+        return QUIT
 
     @presence_stanza_handler("subscribe")
     def handle_presence_subscribe(self, stanza):
@@ -129,6 +130,9 @@ class BotChat(EventHandler, XMPPFeatureHandler):
     def handle_presence_unavailable(self, stanza):
         self.logger.info(r"{0} has been offline".format(stanza.from_jid))
         frm = stanza.from_jid
+        if frm.bare().as_string() == USER:
+            self.logger.info('bot go to offline')
+            self.disconnect()
         set_offline(frm)
 
     @message_stanza_handler()
@@ -146,6 +150,8 @@ class BotChat(EventHandler, XMPPFeatureHandler):
     @event_handler(DisconnectedEvent)
     def handle_disconnected(self, event):
         self.connected = False
+        self.client.main_loop.quit()
+
 
     @event_handler(ConnectedEvent)
     def handle_connected(self, event):

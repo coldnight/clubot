@@ -19,7 +19,7 @@ from plugin.util import NOW, get_email, get_logger
 from plugin.cmd import CommandHandler, AdminCMDHandler
 from plugin.city import cityid
 
-from settings import ADMINS
+from settings import ADMINS, MODES
 
 from thread_pool import ThreadPool
 
@@ -109,6 +109,12 @@ class MessageBus(object):
             return self.send_command(stanza, '-help')
         if body.strip() == 'ping':
             return self.send_command(stanza, '-_ping')
+        mode = get_info('mode', stanza.from_jid)
+        if mode == 'quiet':
+            body = u'你处于{0},请使用-cd命令切换到 {1} '\
+                    u'后发言'.format(MODES[mode], MODES['talk'])
+            return self.send_back_msg(stanza, body)
+
         add_history(stanza.from_jid, 'all', body)
         members = get_members(stanza.from_jid)
         self.logger.info("{0} send message {1} to {2!r}"
@@ -119,7 +125,9 @@ class MessageBus(object):
 
     def send_back_msg(self, stanza, body):
         """ 发送返回消息 """
-        self.send_message(stanza, stanza.from_jid.bare().as_string(), body)
+        to = stanza.from_jid.bare().as_string()
+        typ = stanza.stanza_type
+        self._stream.send(self.make_message(to, typ, body))
 
     def send_sys_msg(self, stanza, body):
         """ 发送系统消息 """
@@ -148,7 +156,6 @@ class MessageBus(object):
 
     def send_subscribe(self, jid):
         """ 发送订阅 """
-        #TODO May be remove resource from jid
         p1 = Presence(from_jid = self.bot_jid, to_jid = jid,
                       stanza_type = 'subscribe')
         p = Presence(from_jid = self.bot_jid, to_jid = jid,
