@@ -127,6 +127,9 @@ class MessageBus(object):
         [self.send_message(stanza, m, body) for m in members]
 
     def send_command(self, stanza,  body):
+        """ 处理命令
+            为防止阻塞使用线程池处理命令
+        """
         email = get_email(stanza.from_jid)
         self.logger.info("{0} run command {1}".format(stanza.from_jid, body))
         if email in ADMINS:

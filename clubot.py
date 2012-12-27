@@ -25,7 +25,6 @@ import subprocess
 
 import pyxmpp2
 from pyxmpp2.jid import JID
-from pyxmpp2.message import Message
 from pyxmpp2.presence import Presence
 from pyxmpp2.client import Client
 from pyxmpp2.settings import XMPPSettings
@@ -55,7 +54,6 @@ class BotChat(EventHandler, XMPPFeatureHandler):
                             "software_version": __version__,
                             "software_os": "Linux",
                             "tls_verify_peer": False,
-                            "full_name":"PythonerClub",
                             "starttls": True,
                             "ipv6":False,
                             })
@@ -131,9 +129,6 @@ class BotChat(EventHandler, XMPPFeatureHandler):
     def handle_presence_unavailable(self, stanza):
         self.logger.info(r"{0} has been offline".format(stanza.from_jid))
         frm = stanza.from_jid
-        if frm.bare().as_string == USER:
-            self.connected = False
-            self.disconnect()
         set_offline(frm)
 
     @message_stanza_handler()
@@ -193,17 +188,18 @@ class BotChat(EventHandler, XMPPFeatureHandler):
         [add_member(frm) for frm in ret if not get_member(frm)]
         if IMPORT:
             [self.invite_member(JID(m)) for m in members if JID(m) not in ret]
-        else:
-            [del_member(JID(m)) for m in members if JID(m) not in ret]
+        #else:
+            #[del_member(JID(m)) for m in members if JID(m) not in ret]
 
     @event_handler()
     def handle_all(self, event):
         self.logger.info(u"-- {0}".format(event))
 
 
+logger = get_logger()
 def main():
     if not PASSWORD:
-        print u'Error:Please write the password in the settings.py'
+        logger.error(u'Please write the password in the settings.py')
         sys.exit(2)
     if not DEBUG:
         try:
@@ -213,28 +209,25 @@ def main():
             pid = os.fork()
             if pid > 0: sys.exit(0)
         except OSError, e:
-            logging.error("Fork #1 failed: %d (%s)", e.errno, e.strerror)
+            logger.error("Fork #1 failed: %d (%s)", e.errno, e.strerror)
             sys.exit(1)
         os.setsid()
         os.umask(0)
         try:
             pid = os.fork()
             if pid > 0:
-                logging.info("Daemon PID %d" , pid)
+                logger.info("Daemon PID %d" , pid)
                 with open(PIDPATH, 'w') as f: f.write(str(pid))
                 sys.exit(0)
-            else:
-                #TODO
-                pass
         except OSError, e:
-            logging.error("Daemon started failed: %d (%s)", e.errno, e.strerror)
+            logger.error("Daemon started failed: %d (%s)", e.errno, e.strerror)
             os.exit(1)
     while True:
         bot = BotChat()
         try:
             bot.run()
         except pyxmpp2.exceptions.SASLAuthenticationFailed:
-            print 'Username or Password Error!!!'
+            logger.error('Username or Password Error!!!')
             sys.exit(2)
         bot.connected = False
         if not bot.connected:
@@ -248,7 +241,7 @@ def main():
 
 
 def restart(signum, stack):
-    logging.info('Restart...')
+    logger.info('Restart...')
     PID = int(open(PIDPATH, 'r').read())
     pf = os.path.join(os.path.dirname(__file__), __file__)
     cmd = r'kill -9 {0} && python {1} '.format(PID, pf)
@@ -272,13 +265,13 @@ if __name__ == '__main__':
         try:
             with open(PIDPATH, 'r') as f: os.kill(int(f.read()), 1)
         except Exception, e:
-            logging.error('Restart failed %s: %s', e.errno, e.strerror)
-            logging.info("Try start...")
+            logger.error('Restart failed %s: %s', e.errno, e.strerror)
+            logger.info("Try start...")
             main()
-            logging.info("done")
+            logger.info("done")
     elif args.action == 'stop':
         try:
-            logging.info("Stop the bot")
+            logger.info("Stop the bot")
             with open(PIDPATH, 'r') as f: os.kill(int(f.read()), 9)
         except Exception, e:
-            logging.error("Stop failed line:%d error:%s", e.errno, e.strerror)
+            logger.error("Stop failed line:%d error:%s", e.errno, e.strerror)

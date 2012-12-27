@@ -46,21 +46,117 @@ from util import get_code_types, Complex, get_logger, get_email
 
 from pyxmpp2.jid import JID
 
-logger = get_logger()
 
-class CommandHandler(object):
-    """
-        生成命令
+class BaseHandler(object):
+    """ 命令处理基类
         命令对应着方法
         比如敲入 -ls 则对应ls方法
-        需要参数自行从kwargs里提取
-        - 所有命令须返回Message/Presence的实例或实例列表
+        需要参数自行从args里提取
     """
-    _cache = {}
-    _modes = MODES
     def __init__(self, message_bus):
-        self._message_bus = message_bus
+        self._message_bus = message_bus   # 消息总线
+        self._logger = get_logger()       # 日志
+        self._cache = {}                  # 缓存
+        self._modes = MODES               # 模式
 
+    def _set_cache(self, key, data, expires = None):
+        """设置缓存 expires(秒) 设置过期时间None为永不过期"""
+        if expires:
+            self._cache[key] = {}
+            self._cache[key]['data'] = data
+            self._cache[key]['expires'] = expires
+            self._cache[key]['time'] = time.time()
+        else:
+            self._cache[key]['data'] = data
+
+    def _get_cache(self, key):
+        """获取缓存"""
+        if not self._cache.has_key(key): return None
+        if self._cache[key].has_key('expires'):
+            expires = self._cache[key]['expires']
+            time = self._cache[key]['time']
+            if (time.time() - time) > expires:
+                return None
+            else:
+                return self._cache[key].get('data')
+        else:
+            return self._cache[key].get('data')
+
+    def _send_cmd_result(self, stanza, body):
+        """返回命令结果"""
+        self._message_bus.send_back_msg(stanza, body)
+
+    def _get_cmd(self, name = None):
+        if name:
+            command = getattr(self, name)
+        else:
+            command = [{'name':k, 'func':getattr(self, k)}
+                       for k in dir(self) if not k.startswith('_')]
+        return command
+
+    def __getattr__(self, name):
+        return self.help
+
+    def _parse_args(self, cmd):
+        """ 解析命令和参数 """
+        cmd = cmd.strip()
+        splitbody = cmd.split('\n')
+        if len(splitbody) >= 2:
+            cmdline = (splitbody[0], '\n'.join(splitbody[1:]))
+        else:
+            cmdline= splitbody
+        tmp = list(cmdline)
+        cmdline = tmp[0].split(' ') + tmp[1:]
+        return cmdline[0], cmdline[1:]
+
+    def _run_cmd(self, stanza, body):
+        """ 执行命令 """
+        cmd = body[1:]
+        c, args = self._parse_args(cmd)
+        email = get_email(stanza.from_jid)
+        cmds = [v.get('name') for v in self._get_cmd()]
+        cmds.append('_ping')
+        cmds.append('_tq')
+        if c not in cmds:
+            self._message_bus.send_all_msg(stanza, body)
+            return
+        try:
+            self._logger.info('%s run cmd %s', email, c)
+            m =getattr(self, c)(stanza, *args)
+        except Exception as e:
+            self._logger.warning(e.message)
+            errorinfo = traceback.format_exc()
+            body = u'{0} run command {1} happend an error:\
+                    {2}'.format(get_nick(email), c, errorinfo)
+            self._message_bus.send_to_admin(stanza, body)
+            self._message_bus.send_back_msg(stanza, c + ' 命令异常,已通知管理员')
+            return
+
+        return m
+
+    def help(self, stanza, *args):
+        """显示帮助"""
+        if args:
+            func = self._get_cmd(args[0])
+            if func:
+                body ="-{0} : {1}".format(args[0], func.__doc__)
+            else:
+                body = "-{0} : command unknow" .format(args[0])
+        else:
+            body = []
+            funcs = self._get_cmd()
+            for f in funcs:
+                r = "-%s\t%s" % (f.get('name'), f.get('func').__doc__)
+                body.append(r)
+            body = sorted(body, key=lambda k:k[1])
+            body = '\n'.join(body)
+        self._send_cmd_result(stanza, body)
+
+
+
+
+class CommandHandler(BaseHandler):
+    """ 普通用户命令 """
     def ls(self, stanza, *args):
         """列出成员/模式/允许的代码,发送-ls help查看用法"""
         mode = args[0] if len(args) >= 1 else None
@@ -227,24 +323,6 @@ class CommandHandler(object):
         to = args[0]
         self._message_bus.send_subscribe(JID(to))
 
-    def help(self, stanza, *args):
-        """显示帮助"""
-        if args:
-            func = self._get_cmd(args[0])
-            if func:
-                body ="-{0} : {1}".format(args[0], func.__doc__)
-            else:
-                body = "-{0} : command unknow" .format(args[0])
-        else:
-            body = []
-            funcs = self._get_cmd()
-            for f in funcs:
-                r = "-%s\t%s" % (f.get('name'), f.get('func').__doc__)
-                body.append(r)
-            body = sorted(body, key=lambda k:k[1])
-            body = '\n'.join(body)
-        self._send_cmd_result(stanza, body)
-
 
     def history(self, stanza, *args):
         """显示聊天历史"""
@@ -280,82 +358,6 @@ class CommandHandler(object):
                                                 '\n\t'.join(author))
         body += "\nhttps://github.com/coldnight/clubot/tree/dev"
         return self._send_cmd_result(stanza, body)
-
-    def _set_cache(self, key, data, expires = None):
-        """设置缓存 expires(秒) 设置过期时间None为永不过期"""
-        if expires:
-            self._cache[key] = {}
-            self._cache[key]['data'] = data
-            self._cache[key]['expires'] = expires
-            self._cache[key]['time'] = time.time()
-        else:
-            self._cache[key]['data'] = data
-
-    def _get_cache(self, key):
-        """获取缓存"""
-        if not self._cache.has_key(key): return None
-        if self._cache[key].has_key('expires'):
-            expires = self._cache[key]['expires']
-            time = self._cache[key]['time']
-            if (time.time() - time) > expires:
-                return None
-            else:
-                return self._cache[key].get('data')
-        else:
-            return self._cache[key].get('data')
-
-    def _send_cmd_result(self, stanza, body):
-        """返回命令结果"""
-        self._message_bus.send_back_msg(stanza, body)
-
-    def _get_cmd(self, name = None):
-        if name:
-            command = getattr(self, name)
-        else:
-            command = [{'name':k, 'func':getattr(self, k)}
-                       for k in dir(self) if not k.startswith('_')]
-        return command
-
-
-    def __getattr__(self, name):
-        return self.help
-
-
-    def _parse_args(self, cmd):
-        cmd = cmd.strip()
-        splitbody = cmd.split('\n')
-        if len(splitbody) >= 2:
-            cmdline = (splitbody[0], '\n'.join(splitbody[1:]))
-        else:
-            cmdline= splitbody
-        tmp = list(cmdline)
-        cmdline = tmp[0].split(' ') + tmp[1:]
-        return cmdline[0], cmdline[1:]
-
-    def _run_cmd(self, stanza, body):
-        """获取命令"""
-        cmd = body[1:]
-        c, args = self._parse_args(cmd)
-        email = get_email(stanza.from_jid)
-        cmds = [v.get('name') for v in self._get_cmd()]
-        cmds.append('_ping')
-        cmds.append('_tq')
-        if c not in cmds:
-            self._message_bus.send_all_msg(stanza, body)
-            return
-        try:
-            logger.info('%s run cmd %s', email, c)
-            m =getattr(self, c)(stanza, *args)
-        except Exception as e:
-            logger.warning(e.message)
-            errorinfo = traceback.format_exc()
-            body = u'{0} run command {1} happend an error:\
-                    {2}'.format(get_nick(email), c, errorinfo)
-            self._message_bus.send_to_admin(stanza, body)
-            self._message_bus.send_back_msg(stanza, c + ' 命令异常,已通知管理员')
-            return
-
-        return m
 
 
 class AdminCMDHandler(CommandHandler):

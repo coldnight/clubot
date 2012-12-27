@@ -4,7 +4,7 @@
 #   Author  :   cold
 #   E-mail  :   wh_linux@126.com
 #   Date    :   12/12/27 09:30:58
-#   Desc    :   线程池
+#   Desc    :   简单线程池
 #
 import Queue
 import threading
@@ -12,6 +12,8 @@ import functools
 
 class ThreadPool(object):
     """ 线程池
+        启动相应的线程数,提供接口添加任务,任务为函数
+        因为线程池时刻都有可能用到所以不做清理
         `thread_num`  - 初始化线程数
     """
     def __init__(self, thread_num = 1):
@@ -29,7 +31,10 @@ class ThreadPool(object):
         return
 
     def worker(self):
-        """ 工作线程 """
+        """ 工作线程
+            因为传入的函数已经做了相应的错误处理,
+            所以在此不做进一步错误处理
+        """
         while True:
             func = self._jobs_queue.get()
             func()
