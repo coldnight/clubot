@@ -35,7 +35,7 @@ class MessageBus(object):
         self._stream = stream
         self.cmd_handler = CommandHandler(message_bus = self)
         self.admin_cmd_handler = AdminCMDHandler(message_bus = self)
-        self._thread_pool = ThreadPool(2)
+        self._thread_pool = ThreadPool(5)
         self._thread_pool.start()         # 启动线程池
         self.logger = get_logger()
         return
