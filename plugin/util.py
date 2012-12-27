@@ -181,29 +181,29 @@ class Complex():
 
 def welcome(frm):
     r = u"欢迎加入我们\n你的昵称是{0}\n可以使用{1}更改你的昵称\n"
-    r += u"可以使用help查看帮助"
+    r += u"可以使用发送help查看帮助"
     r = r.format(frm.local, "-nick")
     return r
 
 def new_member(frm):
     return u"{0} 加入群".format(frm.local)
 
-level = None
-handler = None
-def get_logger():
-    global level, handler
-    logger = logging.getLogger()
+def get_logger(name = None):
+    if not name: name = 'clubot'
+    logger = logging.getLogger(name)
     if DEBUG:
         hdl = logging.StreamHandler()
         level = logging.DEBUG
     else:
         hdl = logging.FileHandler(LOGPATH)
-    level = logging.INFO
-    fmt = logging.Formatter("%(asctime)s %(levelname)s [%(threadName)-10s] %(message)s")
+        level = logging.INFO
+    fmt = logging.Formatter("[%(threadName)s] %(asctime)s %(levelname)s %(message)s")
     hdl.setFormatter(fmt)
     handler = hdl
+    logger.handlers = []
     logger.addHandler(handler)
-    logger.setLevel(logging.INFO) # change to DEBUG for higher verbosity
+    logger.setLevel(level) # change to DEBUG for higher verbosity
+    logger.propagate = False
     return logger
 
 
