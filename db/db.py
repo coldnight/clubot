@@ -117,7 +117,7 @@ class DatabaseOp(object):
     def _format_set(self, set_dict):
         result = ''
         for k, v in set_dict.items():
-            result += "`{0}`={1},".format(k, escape_string(str(v)))
+            result += "`{0}`='{1}',".format(k, escape_string(str(v)))
         result = result.rstrip(',')
         return result
 
