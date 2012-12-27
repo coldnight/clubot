@@ -100,8 +100,6 @@ class CommandHandler(object):
         onlinebody = []
         offlinebody = []
         els = []
-        online_num = 0
-        total = len(members)
         for m in members:
             email = m.get('email')
             if email in els: continue
@@ -125,6 +123,8 @@ class CommandHandler(object):
         body.insert(0, 'Pythoner Club 所有成员(** 表示你自己, * 表示在线):')
         body.extend(onlinebody)
         body.extend(offlinebody)
+        online_num = len(onlinebody)
+        total = online_num + len(offlinebody)
         body.append('共列出 {0} 位成员 {1} 位在线'.format(total, online_num))
         self._send_cmd_result(stanza, '\n'.join(body))
 
