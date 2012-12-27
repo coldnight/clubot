@@ -106,10 +106,8 @@ class CommandHandler(object):
             els.append(email)
             if email == femail:
                 r = '**{0}'.format(m.get('nick'))
-                online_num += 1
                 onlinebody.append(r)
             elif m.get('isonline'):
-                online_num += 1
                 r = '*{0}'.format(m.get('nick'))
                 if m.get('status'):
                     r += ' ' + m.get('status')
