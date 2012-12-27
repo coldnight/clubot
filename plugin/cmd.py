@@ -273,7 +273,7 @@ class CommandHandler(object):
                     'eleven.i386(eleven.i386@gmail.com)',]
         body = "version %s\nauthors\n\t%s\n" % (__version__,
                                                 '\n\t'.join(author))
-        body += "\nhttps://github.com/coldnight/clubot"
+        body += "\nhttps://github.com/coldnight/clubot/tree/dev"
         return self._send_cmd_result(stanza, body)
 
     def _set_cache(self, key, data, expires = None):
