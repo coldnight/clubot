@@ -99,21 +99,26 @@ class CommandHandler(object):
         members = get_members_info()
         body = []
         els = []
+        online_num = 0
+        total = len(members)
         for m in members:
             email = m.get('email')
             if email in els: continue
             els.append(email)
             if email == femail:
                 r = '**{0}'.format(m.get('nick'))
+                online_num += 1
             elif m.get('isonline'):
+                online_num += 1
                 r = '*{0}'.format(m.get('nick'))
                 if m.get('status'):
                     r += ' ' + m.get('status')
             else:
                 r = '  ' + m.get('nick')
             body.append(r)
-        body = sorted(body, key = lambda k:k[1], reverse=True)
+        body = sorted(body, key = lambda k:k[1], reverse=False)
         body.insert(0, 'Pythoner Club 所有成员(** 表示你自己, * 表示在线):')
+        body.append('共列出 {0} 位成员 {1} 位在线'.format(total, online_num))
         self._send_cmd_result(stanza, '\n'.join(body))
 
     def cd(self, stanza, *args):

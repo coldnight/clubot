@@ -197,7 +197,7 @@ def get_logger(name = None):
     else:
         hdl = logging.FileHandler(LOGPATH)
         level = logging.INFO
-    fmt = logging.Formatter("[%(name)s] %(asctime)s %(levelname)s %(message)s")
+    fmt = logging.Formatter("[%(threadName)s] %(asctime)s %(levelname)s %(message)s")
     hdl.setFormatter(fmt)
     handler = hdl
     logger.handlers = []

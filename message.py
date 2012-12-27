@@ -6,12 +6,11 @@
 #   Date    :   12/12/25 16:40:36
 #   Desc    :   消息处理
 #
-import threading
 from pyxmpp2.jid import JID
 from pyxmpp2.message import Message
 from pyxmpp2.presence import Presence
 
-from db.status import get_resource, is_online, set_online
+from db.status import is_online, set_online
 from db.info import add_info, get_info
 from db.member import get_members, get_nick
 from db.history import add_history
@@ -22,12 +21,22 @@ from plugin.city import cityid
 
 from settings import ADMINS
 
+from thread_pool import ThreadPool
+
 class MessageBus(object):
+    """ 消息总线
+        用于发送消息和桥接bot和命令
+        接收消息分发给群成员
+        处理消息命令,指派给相应的命令处理
+        供命令处理返回命令或广播命令结果
+    """
     def __init__(self, bot_jid, stream):
         self.bot_jid = bot_jid
         self._stream = stream
         self.cmd_handler = CommandHandler(message_bus = self)
         self.admin_cmd_handler = AdminCMDHandler(message_bus = self)
+        self._thread_pool = ThreadPool(2)
+        self._thread_pool.start()         # 启动线程池
         self.logger = get_logger()
         return
 
@@ -124,10 +133,7 @@ class MessageBus(object):
             target = self.admin_cmd_handler._run_cmd
         else:
             target = self.cmd_handler._run_cmd
-        t = threading.Thread(target = target, name='run_cmd',
-                             args = (stanza, body))
-        t.setDaemon(True)
-        t.start()
+        self._thread_pool.add_job(target, stanza, body)
 
     def send_status(self, statustext, to = None):
         if to:
