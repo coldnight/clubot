@@ -431,7 +431,7 @@ class CommandHandler(BaseHandler):
         if len(args) < 1: return self.help(stanza, 'py')
         code = ' '.join(args)
         result = run_code(code)
-        body = u'执行代码:\n{1}\n'.format(code)
+        body = u'执行代码:\n{0}\n'.format(code)
         body += result
         self._message_bus.send_all_msg(stanza, body)
         self._send_cmd_result(stanza, result)
