@@ -273,8 +273,8 @@ class CommandHandler(BaseHandler):
             else:
                 r = '  ' + m.get('nick')
                 offlinebody.append(r)
-        onlinebody = sorted(onlinebody, key = lambda k:k[1], reverse=False)
-        offlinebody = sorted(offlinebody, key = lambda k:k[1], reverse=False)
+        onlinebody = sorted(onlinebody, key = lambda k:k.decode('utf-8')[1], reverse=False)
+        offlinebody = sorted(offlinebody, key = lambda k:k.decode('utf-8')[1], reverse=False)
         body = []
         body.append('当前频道({0})所有成员'.format(channel))
         body.extend(onlinebody)
