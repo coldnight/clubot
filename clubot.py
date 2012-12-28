@@ -201,7 +201,6 @@ class BotChat(EventHandler, XMPPFeatureHandler):
         self.logger.info(u"-- {0}".format(event))
 
 
-logger = get_logger()
 def main():
     if not PASSWORD:
         logger.error(u'Please write the password in the settings.py')
@@ -256,6 +255,7 @@ def restart(signum, stack):
 signal.signal(signal.SIGHUP, restart)
 
 if __name__ == '__main__':
+    logger = get_logger()
     import argparse
     parser = argparse.ArgumentParser(description = "Pythoner Club group bot")
     parser.add_argument('--restart', action = 'store_const', dest = 'action',
