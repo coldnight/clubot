@@ -202,6 +202,7 @@ class BotChat(EventHandler, XMPPFeatureHandler):
 
 
 def main():
+    logger = get_logger()
     if not PASSWORD:
         logger.error(u'Please write the password in the settings.py')
         sys.exit(2)
@@ -245,6 +246,7 @@ def main():
 
 
 def restart(signum, stack):
+    logger = get_logger()
     logger.info('Restart...')
     PID = int(open(PIDPATH, 'r').read())
     pf = os.path.join(os.path.dirname(__file__), __file__)

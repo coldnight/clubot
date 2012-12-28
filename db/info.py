@@ -11,12 +11,13 @@ from plugin.util import get_email
 
 TABLE = "info"
 
-def get_info(key, frm, default):
+def get_info(key, frm, default = None):
     email = get_email(frm)
     where = "`key`='{0}' and `email`='{1}'".format(key, email)
     with Op(TABLE) as op:
         r = op.select_one(where=where).get('value')
-        r = r if r else default
+        if default:
+            r = r if r else default
         return r
 
 def add_info(key, value, frm):
