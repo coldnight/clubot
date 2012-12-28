@@ -7,6 +7,7 @@
 #   Desc    :   聊天历史
 #
 from .db import MySQLContext
+from .info import add_info
 from .member import get_nick
 from plugin.util import NOW, get_email
 
@@ -14,6 +15,7 @@ def add_history(frm, to, content):
     email = get_email(frm)
     fields = ('frmemail', 'toemail', 'content', 'date')
     values = (email, to, content, NOW())
+    add_info('last_say', NOW(), frm)
     with MySQLContext('history') as op:
         return op.insert(fields, values)
 

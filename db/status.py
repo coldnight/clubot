@@ -8,7 +8,8 @@
 #
 from pyxmpp2.jid import JID
 from .db import MySQLContext
-from plugin.util import get_email
+from .info import add_info
+from plugin.util import get_email, NOW
 
 def get_status(frm):
     if isinstance(frm , JID):
@@ -46,6 +47,7 @@ def set_offline(frm):
     where = "email='{0}' and resource='{1}'".format(email, resource)
     with MySQLContext('status') as op:
         r = op.remove(where)
+    add_info('last_online', NOW(), frm)
     return r
 
 def is_online(frm):

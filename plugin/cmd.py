@@ -35,11 +35,10 @@
 import time
 import traceback
 
-from db.member import get_nick, get_member, edit_member
-from db.member import get_members_info, del_member
+from db.member import get_nick, get_member, edit_member, user_info_template
+from db.member import get_members_info, del_member, get_user_info
 from db.history import get_history
-from db.info import add_global_info, get_user_info
-from db.info import user_info_template, add_info
+from db.info import add_global_info, add_info
 from settings import __version__, LOGPATH, STATUS, MODES
 from util import run_code, paste_code, add_commends
 from util import get_code_types, Complex, get_logger, get_email
@@ -340,9 +339,7 @@ class CommandHandler(BaseHandler):
         self._send_cmd_result(stanza, body)
 
     def _whois(self, frm):
-        result = get_user_info(frm)
-        result.update(nick = get_nick(frm))
-        body = user_info_template.substitute(result)
+        body = get_user_info(frm)
         return body
 
     def me(self, stanza, *args):
