@@ -117,6 +117,8 @@ class MessageBus(object):
 
         add_history(stanza.from_jid, 'all', body)
         members = get_members(stanza.from_jid)
+        current = get_info('channel', stanza.from_jid)
+        members = [m for m in members if get_info('channel', m) == current]
         self.logger.info("{0} send message {1} to {2!r}"
                             .format(stanza.from_jid, body, members))
         nick = get_nick(stanza.from_jid)

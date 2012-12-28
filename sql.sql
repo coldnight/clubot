@@ -76,3 +76,16 @@ create table if not exists status(
     PRIMARY KEY(id),
     index(email)
 )character set utf8;
+
+
+-- 频道表
+create table if not exists channel(
+    id INT NOT NULL AUTO_INCREMENT,
+    name VARCHAR(20) NOT NULL,
+    passwd VARCHAR(50) NULL,
+    usernum INT NOT NULL DEFAULT 0,
+    owner VARCHAR(100) NOT NULL,
+    date TIMESTAMP NOT NULL,
+    PRIMARY KEY(id),
+    INDEX(name)
+    )character set utf8;

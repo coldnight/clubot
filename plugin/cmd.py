@@ -35,10 +35,12 @@
 import time
 import traceback
 
-from db.member import get_nick, get_member, edit_member, user_info_template
+from db.member import get_nick, get_member, edit_member, get_members
 from db.member import get_members_info, del_member, get_user_info
 from db.history import get_history
-from db.info import add_global_info, add_info
+from db.channel import add_channel, add_channel_user, del_channel_user
+from db.channel import get_channel
+from db.info import add_global_info, add_info, get_info
 from settings import __version__, LOGPATH, STATUS, MODES
 from util import run_code, paste_code, add_commends
 from util import get_code_types, Complex, get_logger, get_email
@@ -52,6 +54,8 @@ class BaseHandler(object):
         比如敲入 -ls 则对应ls方法
         需要参数自行从args里提取
     """
+    _invaild = ['u', 'm', 'c', 'mode', 'user', 'main', 'channel',
+                'ct', 'codetype', 'users', 'a', 'all']
     def __init__(self, message_bus):
         self._message_bus = message_bus   # 消息总线
         self._logger = get_logger()       # 日志
@@ -151,6 +155,15 @@ class BaseHandler(object):
             body = '\n'.join(body)
         self._send_cmd_result(stanza, body)
 
+    def _switch_channel(self, email, channel):
+        """ 切换频道 """
+        oldch = get_info('channel', email)
+        self._logger.info('{0} switch channel from {1} to {2}'
+                          .format(email, oldch, channel))
+        del_channel_user(oldch)
+        add_info('channel', channel, email)
+        add_channel_user(channel)
+
 
 
 
@@ -164,6 +177,9 @@ class CommandHandler(BaseHandler):
                 nicks = args[1:]
                 self._show_nicks(stanza, nicks)
             else:
+                self._ls_channel_users(stanza)
+            return
+        if mode in ['a', 'all']:
                 self._ls_users(stanza)
         elif mode in ['ct', 'codetype', 'code type', 'codetypes',
                       'code types']:
@@ -173,18 +189,26 @@ class CommandHandler(BaseHandler):
             for m in self._modes:
                 body += "{0}:{1}\n".format(m, self._modes[m])
             self._send_cmd_result(stanza, body.strip())
+        elif mode in ['c', 'channel']:
+            self._ls_channels(stanza)
         else:
             members = get_members_info()
             nicks = [m.get('nick') for m in members]
+            channels = [v.get('name') for v in get_channel()]
             if mode in nicks:
                 self._show_nicks(stanza, [mode])
+            elif mode in channels:
+                self._show_channel(stanza, mode)
             else:
                 body = 'Usage: \n\
-                        -ls                   查看所有成员\n\
+                        -ls                   查看当前频道成员\n\
+                        -ls [a|all]               查看所有成员\n\
                         -ls [u|user] [nick]   查看用户\n\
                         -ls nick              查看nick的详细信息\n\
                         -ls [ct|codetype]     查看允许的代码类型\n\
-                        -ls [m|mode]          列出所有模式'
+                        -ls [m|mode]          列出所有模式\n\
+                        -ls [CHANNEL]         查看CHANNLE频道详细信息\n\
+                        -ls [c|channel]       列出所有频道'
                 self._send_cmd_result(stanza, body)
 
     def _ls_users(self, stanza):
@@ -220,16 +244,120 @@ class CommandHandler(BaseHandler):
         total = online_num + len(offlinebody)
         body.append('共列出 {0} 位成员 {1} 位在线'.format(total, online_num))
         self._send_cmd_result(stanza, '\n'.join(body))
+        return
+
+    def _ls_channel_users(self, stanza):
+        channel = get_info('channel', stanza.from_jid)
+        channel = channel if channel else 'main'
+        frm = stanza.from_jid
+        femail = get_email(frm)
+        members = get_members_info()
+        onlinebody = []
+        offlinebody = []
+        els = []
+        for m in members:
+            email = m.get('email')
+            ch= get_info('channel', email)
+            ch= ch if ch else 'main'
+            if ch != channel: continue
+            if email in els: continue
+            els.append(email)
+            if email == femail:
+                r = '**{0}'.format(m.get('nick'))
+                onlinebody.append(r)
+            elif m.get('isonline'):
+                r = '*{0}'.format(m.get('nick'))
+                if m.get('status'):
+                    r += ' ' + m.get('status')
+                onlinebody.append(r)
+            else:
+                r = '  ' + m.get('nick')
+                offlinebody.append(r)
+        onlinebody = sorted(onlinebody, key = lambda k:k[1], reverse=False)
+        offlinebody = sorted(offlinebody, key = lambda k:k[1], reverse=False)
+        body = []
+        body.append('当前频道({0})所有成员'.format(channel))
+        body.extend(onlinebody)
+        body.extend(offlinebody)
+        online_num = len(onlinebody)
+        total = online_num + len(offlinebody)
+        body.append('共列出 {0} 位成员 {1} 位在线'.format(total, online_num))
+        self._send_cmd_result(stanza, '\n'.join(body))
+        return
+
+    def _ls_channels(self, stanza):
+        channels = get_channel()
+        body = [u'当前所有频道']
+        for c in channels:
+            name = c.get('name')
+            passwd = c.get('passwd')
+            if passwd:
+                name += ' *'
+            body.append(name)
+        self._send_cmd_result(stanza, '\n'.join(body))
+
+    def _show_nicks(self, stanza, nicks):
+        """ 显示所有昵称的信息 """
+        emails = [get_member(nick = n) for n in nicks]
+        infos = [self._whois(e.get('email')) for e in emails]
+        body = '\n\n'.join(infos)
+        self._send_cmd_result(stanza, body)
+
+    def _whois(self, frm):
+        body = get_user_info(frm)
+        return body
+
+    def _show_channel(self, stanza, name):
+        channel = get_channel(name)
+        name = channel.get('name')
+        usernum = channel.get('usernum')
+        passwd = channel.get('passwd')
+        isencrypt = u'是' if passwd else u'否'
+        owner = channel.get('owner')
+        nick = get_nick(owner) if owner != 'bot' else owner
+        body = "频道名称: {0}           频道人数: {1}\n"\
+                "是否加密: {2}           拥有者:{3}".format(name, usernum,
+                                                            isencrypt, nick)
+        if owner == stanza.from_jid.bare().as_string() and passwd:
+            body +="\n频道密码: "+ passwd
+        self._send_cmd_result(stanza, body)
 
     def cd(self, stanza, *args):
-        """ 进入模式,发送-ls m查看所支持的模式 """
-        mode = args[0] if len(args) == 1 else None
-        if not mode or mode not in self._modes:
+        """ 进入模式/频道 """
+        mode = args[0] if len(args) >= 1 else None
+        channels = get_channel()
+        cnames = [v.get('name') for v in channels]
+        if not mode or (mode not in self._modes and mode not in cnames):
             body = "Usage:\n\
-                    -cd MODE    进入MODE模式,使用-ls m查看允许的模式"
+                    -cd MODE/CHANNEL    进入MODE模式,使用-ls m查看允许的模式"
         else:
-            add_info('mode', mode, stanza.from_jid)
-            body = " 你已进入{0}".format(self._modes[mode])
+            if mode in self._modes:
+                add_info('mode', mode, stanza.from_jid)
+                body = " 你已进入{0}".format(self._modes[mode])
+            else:
+                current_channel = [v for v in channels
+                                   if v.get('name') == mode][0]
+                uc = get_info('channel', stanza.from_jid)
+                uc = uc if uc else 'main'
+                if uc == current_channel.get('name'):
+                    body = u'你已经在 {0}  频道'.format(mode)
+                    return self._send_cmd_result(stanza, body)
+                else:
+                    del_channel_user(uc)
+                if current_channel.get('passwd'):
+                    pwd = args[1] if len(args) == 2 else None
+                    if pwd == current_channel.get('passwd'):
+                        add_info('channel', mode, stanza.from_jid)
+                        add_channel_user(mode)
+                        body = " 你已进入 {0} 频道".format(mode)
+                    else:
+                        body = " 频道密码错误"
+                        if not pwd:
+                            body = u"频道已加密,需要密码"
+                else:
+                    add_info('channel', mode, stanza.from_jid)
+                    add_channel_user(mode)
+                    body = " 你已进入 {0} 频道".format(mode)
 
         self._send_cmd_result(stanza, body)
 
@@ -269,6 +397,9 @@ class CommandHandler(BaseHandler):
         """更改昵称 eg. -nick yournewnickname"""
         if len(args) < 1: return self.help(stanza, 'nick')
         nick = ' '.join(args[0:])
+        channels = [v.get('name') for v in get_channel()]
+        if nick in self._invaild or nick in channels:
+            return self._send_cmd_result(stanza, '昵称不合法')
         frm = stanza.from_jid
         oldnick = get_nick(frm)
         r = edit_member(frm, nick = nick)
@@ -298,12 +429,13 @@ class CommandHandler(BaseHandler):
     def py(self, stanza, *args):
         """ 执行Python代码 """
         if len(args) < 1: return self.help(stanza, 'py')
-        nick = get_nick(stanza.from_jid)
         code = ' '.join(args)
         result = run_code(code)
-        body = u'{0} 执行代码:\n{1}\n'.format(nick, code)
+        body = u'执行代码:\n{1}\n'.format(code)
         body += result
-        self._message_bus.send_sys_msg(stanza, body)
+        mode = get_info('mode', stanza.from_jid)
+        mode = mode if mode else 'talk'
+        self._message_bus.send_all_msg(stanza, body)
         self._send_cmd_result(stanza, result)
 
     def _ct(self, stanza, *args):
@@ -330,17 +462,6 @@ class CommandHandler(BaseHandler):
             self._send_cmd_result(stanza, get_history(sef, *args))
         else:
             self._send_cmd_result(stanza, get_history(sef))
-
-    def _show_nicks(self, stanza, nicks):
-        """ 显示所有昵称的信息 """
-        emails = [get_member(nick = n) for n in nicks]
-        infos = [self._whois(e.get('email')) for e in emails]
-        body = '\n\n'.join(infos)
-        self._send_cmd_result(stanza, body)
-
-    def _whois(self, frm):
-        body = get_user_info(frm)
-        return body
 
     def me(self, stanza, *args):
         """ 查看自己的详细信息 """
@@ -396,4 +517,50 @@ class AdminCMDHandler(CommandHandler):
             status = STATUS
         add_global_info('status', status)
         self._message_bus.send_status(status)
+
+    def cc(self, stanza, *args):
+        """ 创建频道 """
+        name = args[0] if len(args) >= 1 else None
+        if not name:
+            return self._send_cmd_result(u'使用 -cc CHANNEL [PASSWORD] 创建CHANNEL')
+        passwd = args[1] if len(args) >=2 else None
+        r = add_channel(stanza.from_jid, name, passwd)
+        if r:
+            body = u'{0} 频道创建成功'.format(name)
+        else:
+            body = u'频道已存在或名称不合法'.format(name)
+        self._send_cmd_result(stanza, body)
+
+    def mv(self, stanza, *args):
+        """ 移动用户到指定频道 """
+        if len(args) < 2:
+            body = u'Usage: -mv NICK CHANNLE'
+            return self._send_cmd_result(stanza, body)
+        if args[1] == '.':
+            distch = get_info('channel', stanza.from_jid)
+        else:
+            distch = args[1]
+        if args[0] == '*':
+            members = get_members(stanza.from_jid)
+            emails = [v for v in members if get_info('channel', v) != distch]
+        else:
+            info = get_member(nick = args[0])
+            emails = [info.get('email')]
+        channel = get_channel(distch)
+        if not emails:
+            body = u'{0} 成员不存在'.format(args[0])
+            return self._send_cmd_result(stanza, body)
+
+        if not channel:
+            body = u'{0} 频道不存在'.format(args[1])
+            return self._send_cmd_result(stanza, body)
+        nick = get_nick(stanza.from_jid)
+        body = '{0} 将你移动到 {1} 频道'.format(nick, distch)
+        nicks = []
+        for email in emails:
+            nicks.append(get_nick(email))
+            self._switch_channel(email, distch)
+            self._message_bus.send_message(stanza, email, body)
+        body = '你将 {0} 移动到 {1} 频道'.format(','.join(nicks), distch)
+        self._send_cmd_result(stanza, body)
 

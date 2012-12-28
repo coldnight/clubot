@@ -15,8 +15,6 @@
 # 2012-11-19 14:00
 #     * 修复断开自动重启
 #
-
-
 import logging
 import sys, os
 import time
