@@ -234,8 +234,8 @@ class CommandHandler(BaseHandler):
             else:
                 r = '  ' + m.get('nick')
                 offlinebody.append(r)
-        onlinebody = sorted(onlinebody, key = lambda k:k[1], reverse=False)
-        offlinebody = sorted(offlinebody, key = lambda k:k[1], reverse=False)
+        onlinebody = sorted(onlinebody, key = lambda k:k.decode('utf-8')[1], reverse=False)
+        offlinebody = sorted(offlinebody, key = lambda k:k.decode('utf-8')[1], reverse=False)
         body = []
         body.insert(0, 'Pythoner Club 所有成员(** 表示你自己, * 表示在线):')
         body.extend(onlinebody)
