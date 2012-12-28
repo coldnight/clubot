@@ -118,22 +118,15 @@ def get_user_info(frm):
     status = status[1] if len(status) == 2 else None
     status = status if status else isonline
     resource = get_resource(frm)
-    join_time = get_info('join_time', frm)
-    join_time = join_time if join_time else '创造之始'
-    last_say = get_info('last_say', frm)
-    last_say = last_say if last_say else '从未发言'
-    last_change_nick = get_info('last_change_nick', frm)
-    last_change_nick = last_change_nick if last_change_nick else '从未修改'
-    change_nick_times = get_info('change_nick_times', frm)
-    change_nick_times = change_nick_times if change_nick_times else 0
-    last_online_time = get_info('last_online', frm)
-    last_online_time = last_online_time if last_online_time else join_time
+    join_time = get_info('join_time', frm, '创造之始')
+    last_say = get_info('last_say', frm, '从未发言')
+    last_change_nick = get_info('last_change_nick', frm, '从未修改')
+    change_nick_times = get_info('change_nick_times', frm, 0)
+    last_online_time = get_info('last_online', frm, join_time)
     level = "管理员" if get_email(frm) in ADMINS else "成员"
-    mode = get_info('mode', frm)
-    mode = mode if mode else 'talk'
+    mode = get_info('mode', frm, 'talk')
     mode = MODES[mode]
-    channel = get_info('channel', frm)
-    channel = channel if channel else 'main'
+    channel = get_info('channel', frm, 'main')
     nick = get_nick(frm)
     result = dict(isonline = isonline, level = level, status = status,
                   join_time = join_time, mode = mode, last_say = last_say,

@@ -433,8 +433,6 @@ class CommandHandler(BaseHandler):
         result = run_code(code)
         body = u'执行代码:\n{1}\n'.format(code)
         body += result
-        mode = get_info('mode', stanza.from_jid)
-        mode = mode if mode else 'talk'
         self._message_bus.send_all_msg(stanza, body)
         self._send_cmd_result(stanza, result)
 

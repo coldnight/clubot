@@ -84,8 +84,7 @@ class MessageBus(object):
             body = NOW() + ' ' + body
             self.logger.debug("store offline message'{0}' for {1!r}"
                                     .format(body, to))
-            offline_message = get_info('offline_message', to)
-            offline_message = offline_message if offline_message else ''
+            offline_message = get_info('offline_message', to, '')
             offline_message += '\n' +  body
             add_info('offline_message', offline_message, to)
 
@@ -117,8 +116,9 @@ class MessageBus(object):
 
         add_history(stanza.from_jid, 'all', body)
         members = get_members(stanza.from_jid)
-        current = get_info('channel', stanza.from_jid)
-        members = [m for m in members if get_info('channel', m) == current]
+        current = get_info('channel', stanza.from_jid, 'main')
+        members = [m for m in members
+                   if get_info('channel', m, 'main') == current]
         self.logger.info("{0} send message {1} to {2!r}"
                             .format(stanza.from_jid, body, members))
         nick = get_nick(stanza.from_jid)
