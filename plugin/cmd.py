@@ -374,6 +374,12 @@ class CommandHandler(BaseHandler):
         self._send_cmd_result(stanza, body)
         self._message_bus.send_all_msg(stanza, body)
 
+    def r(self,stanza,*args):
+        from dice_gtalk import roll
+        body = roll(' '.join(args))
+        self._send_cmd_result(stanza, body)
+        self._message_bus.send_all_msg(stanza, body)
+
     def _ping(self, stanza, *args):
         self._send_cmd_result(stanza, 'is ok, I am online')
 
