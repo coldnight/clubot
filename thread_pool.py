@@ -32,6 +32,7 @@ class ThreadPool(object):
 
     def worker(self):
         """ 工作线程
+            使用Queue阻塞
             因为传入的函数已经做了相应的错误处理,
             所以在此不做进一步错误处理
         """

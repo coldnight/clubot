@@ -60,7 +60,7 @@ class DatabaseOp(object):
         sv = sv.strip(',')
         sql += " VALUES(%s)" % sv
         self.commit = True
-        self.logger.debug('query mysql : {0}'.format(sql % values))
+        self.logger.debug('query mysql : {0}'.format(sql % tuple(values)))
         self.cursor.execute(sql, values)
 
         return self.cursor.lastrowid

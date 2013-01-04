@@ -16,7 +16,7 @@ def get_info(key, frm, default = None):
     where = "`key`='{0}' and `email`='{1}'".format(key, email)
     with Op(TABLE) as op:
         r = op.select_one(where=where).get('value')
-        if default:
+        if default is not None:
             r = r if r else default
         return r
 
