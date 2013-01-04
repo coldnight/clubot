@@ -374,11 +374,15 @@ class CommandHandler(BaseHandler):
         self._send_cmd_result(stanza, body)
         self._message_bus.send_all_msg(stanza, body)
 
-    def r(self,stanza,*args):
+    def roll(self,stanza,*args):
+        """20面骰子,使用:1d20+1 攻击 @submit by:欧剃 @add by: eleven.i386"""
         from dice_gtalk import roll
-        body = roll(' '.join(args))
+        try:
+            body = roll(' '.join(args))
+            self._message_bus.send_all_msg(stanza, body)
+        except:
+            body = u'请发送: -roll 1d20+n A (n是数字 A是动作比如攻击)'
         self._send_cmd_result(stanza, body)
-        self._message_bus.send_all_msg(stanza, body)
 
     def _ping(self, stanza, *args):
         self._send_cmd_result(stanza, 'is ok, I am online')
