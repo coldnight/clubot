@@ -56,7 +56,7 @@ class BaseHandler(object):
         需要参数自行从args里提取
     """
     _invaild = ['u', 'm', 'c', 'mode', 'user', 'main', 'channel',
-                'ct', 'codetype', 'users', 'a', 'all']
+                'ct', 'codetype', 'users', 'a', 'all', '>>>']
     def __init__(self, message_bus):
         self._message_bus = message_bus   # 消息总线
         self._logger = get_logger()       # 日志
@@ -380,7 +380,7 @@ class CommandHandler(BaseHandler):
         nick = get_nick(stanza.from_jid)
         try:
             result = roll(' '.join(args))
-            body = "{0} {1}".format(nick, result)
+            body = ">>> {0} {1}".format(nick, result)
             self._message_bus.send_sys_msg(stanza, body)
         except:
             body = u'请发送: -roll 1d20+n A (n是数字 A是动作比如攻击)'
