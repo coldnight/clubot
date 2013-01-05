@@ -395,7 +395,7 @@ class CommandHandler(BaseHandler):
         if not rp:
             rp = random.randrange(0, 100)
             add_rp(frm, rp)
-            body = "{0} 进行了今日人品检测,人品值为 {1}".format(nick, rp)
+            body = ">>>{0} 进行了今日人品检测,人品值为 {1}".format(nick, rp)
             self._message_bus.send_sys_msg(stanza, body)
         else:
             body = "你已经检测过了今天的人品,人品值为 {0}".format(rp)
