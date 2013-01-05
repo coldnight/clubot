@@ -122,7 +122,10 @@ class MessageBus(object):
         self.logger.info("{0} send message {1} to {2!r}"
                             .format(stanza.from_jid, body, members))
         nick = get_nick(stanza.from_jid)
-        body = "[{0}] {1}".format(nick, body)
+        if body.startswith('/me'):
+            body = body.replace('/me', nick + ' ')
+        else:
+            body = "[{0}] {1}".format(nick, body)
         [self.send_message(stanza, m, body) for m in members]
 
     def send_back_msg(self, stanza, body):
