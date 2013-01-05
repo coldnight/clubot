@@ -384,7 +384,7 @@ class CommandHandler(BaseHandler):
             self._message_bus.send_sys_msg(stanza, body)
         except:
             body = u'请发送: -roll 1d20+n A (n是数字 A是动作比如攻击)'
-        self._send_cmd_result(stanza, body)
+            self._send_cmd_result(stanza, body)
 
     def _ping(self, stanza, *args):
         self._send_cmd_result(stanza, 'is ok, I am online')
