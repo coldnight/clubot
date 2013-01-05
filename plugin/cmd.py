@@ -33,6 +33,7 @@
 #   + 添加me命令用于查看自己的信息
 #
 import time
+import random
 import traceback
 
 from db.member import get_nick, get_member, edit_member, get_members
@@ -40,7 +41,7 @@ from db.member import get_members_info, del_member, get_user_info
 from db.history import get_history
 from db.channel import add_channel, add_channel_user, del_channel_user
 from db.channel import get_channel
-from db.info import add_global_info, add_info, get_info
+from db.info import add_global_info, add_info, get_info, get_rp, add_rp
 from settings import __version__, LOGPATH, STATUS, MODES
 from util import run_code, paste_code, add_commends
 from util import get_code_types, Complex, get_logger, get_email
@@ -384,6 +385,20 @@ class CommandHandler(BaseHandler):
             self._message_bus.send_sys_msg(stanza, body)
         except:
             body = u'请发送: -roll 1d20+n A (n是数字 A是动作比如攻击)'
+            self._send_cmd_result(stanza, body)
+
+    def rp(self, stanza, *args):
+        """ 测试今日RP """
+        frm = stanza.from_jid
+        rp = get_rp(frm)
+        nick = get_nick(frm)
+        if not rp:
+            rp = random.randrange(0, 100)
+            add_rp(frm, rp)
+            body = "{0} 进行了今日人品检测,人品值为 {1}".format(nick, rp)
+            self._message_bus.send_sys_msg(stanza, body)
+        else:
+            body = "你已经检测过了今天的人品,人品值为 {0}".format(rp)
             self._send_cmd_result(stanza, body)
 
     def _ping(self, stanza, *args):

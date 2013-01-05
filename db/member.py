@@ -8,7 +8,7 @@
 #
 import string
 from .db import MySQLContext
-from .info import add_info, get_info
+from .info import add_info, get_info, get_rp
 from .status import get_resource, is_online, get_status
 from plugin.util import get_email, now
 from settings import MODES, ADMINS
@@ -102,7 +102,7 @@ def get_nick(frm):
 
 user_info_template = string.Template("""昵称: $nick         状态: $status
 权限: $level        当前模式: $mode
-资源: $resource
+资源: $resource     今日人品:$rp
 当前频道: $channel
 更改昵称次数: $change_nick_times
 上次更改昵称时间: $last_change_nick
@@ -128,11 +128,13 @@ def get_user_info(frm):
     mode = MODES[mode]
     channel = get_info('channel', frm, 'main')
     nick = get_nick(frm)
+    rp = get_rp(frm)
+    rp = rp if rp else "尚未测试"
     result = dict(isonline = isonline, level = level, status = status,
                   join_time = join_time, mode = mode, last_say = last_say,
                   last_change_nick = last_change_nick, nick = nick,
                   resource = ','.join(resource), channel = channel,
-                  last_online_time = last_online_time,
+                  last_online_time = last_online_time, rp = rp,
                   change_nick_times = change_nick_times)
     body = user_info_template.substitute(result)
     return body
