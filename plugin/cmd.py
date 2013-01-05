@@ -47,6 +47,7 @@ from util import get_code_types, Complex, get_logger, get_email
 
 from pyxmpp2.jid import JID
 
+from dice_gtalk import roll
 
 class BaseHandler(object):
     """ 命令处理基类
@@ -374,9 +375,8 @@ class CommandHandler(BaseHandler):
         self._send_cmd_result(stanza, body)
         self._message_bus.send_all_msg(stanza, body)
 
-    def roll(self,stanza,*args):
+    def r(self,stanza,*args):
         """20面骰子,使用:1d20+1 攻击 @submit by:欧剃 @add by: eleven.i386"""
-        from dice_gtalk import roll
         try:
             body = roll(' '.join(args))
             self._message_bus.send_all_msg(stanza, body)

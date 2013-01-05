@@ -234,6 +234,8 @@ def main():
         except pyxmpp2.exceptions.SASLAuthenticationFailed:
             logger.error('Username or Password Error!!!')
             sys.exit(2)
+        except:
+            bot.disconnect()
         bot.connected = False
         if not bot.connected:
             bot.disconnect()
