@@ -377,9 +377,11 @@ class CommandHandler(BaseHandler):
 
     def r(self,stanza,*args):
         """20面骰子,使用:1d20+1 攻击 @submit by:欧剃 @add by: eleven.i386"""
+        nick = get_nick(stanza.from_jid)
         try:
-            body = roll(' '.join(args))
-            self._message_bus.send_all_msg(stanza, body)
+            result = roll(' '.join(args))
+            body = "{0} {1}".format(nick, result)
+            self._message_bus.send_sys_msg(stanza, body)
         except:
             body = u'请发送: -roll 1d20+n A (n是数字 A是动作比如攻击)'
         self._send_cmd_result(stanza, body)
