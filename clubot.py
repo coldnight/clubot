@@ -42,6 +42,8 @@ from plugin.util import welcome, new_member, get_logger
 
 from message import MessageBus
 
+from epoll import EpollMainLoop
+
 
 class BotChat(EventHandler, XMPPFeatureHandler):
     def __init__(self):
@@ -54,19 +56,22 @@ class BotChat(EventHandler, XMPPFeatureHandler):
                             "tls_verify_peer": False,
                             "starttls": True,
                             "ipv6":False,
+                            "poll_interval": 60
                             })
 
         settings["password"] = PASSWORD
         version_provider = VersionProvider(settings)
         self.connected = False
-        self.client = Client(my_jid, [self, version_provider], settings)
+        mainloop = EpollMainLoop(settings)
+        self.client = Client(my_jid, [self, version_provider], settings, mainloop)
+        #self.client = Client(my_jid, [self, version_provider], settings)
         self.logger = get_logger()
         self.trytimes = 0
         empty_status()
 
-    def run(self):
+    def run(self, timeout = None):
         self.client.connect()
-        self.client.run()
+        self.client.run(timeout)
 
     def disconnect(self):
         self.client.disconnect()
