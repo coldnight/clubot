@@ -47,6 +47,7 @@ from epoll import EpollMainLoop
 __version__ = '0.3.0 alpha-epoll'
 
 class BotChat(EventHandler, XMPPFeatureHandler):
+    trytimes = 0
     def __init__(self):
         my_jid = JID(USER+'/Bot')
         self.my_jid = my_jid
@@ -161,7 +162,7 @@ class BotChat(EventHandler, XMPPFeatureHandler):
     def handle_connected(self, event):
         self.message_bus = MessageBus(self.my_jid, self.stream)
         self.connected = True
-        self.trytimes = 0
+        BotChat.trytimes = 0
 
     @property
     def roster(self):
@@ -245,7 +246,7 @@ def main():
         bot.connected = False
         if not bot.connected:
             bot.disconnect()
-            bot.trytimes += 1
+            BotChat.trytimes += 1
             sleeptime = 10 * bot.trytimes
             logger = get_logger()
             logger.info('Connect failed, will retry in {0}s of '
