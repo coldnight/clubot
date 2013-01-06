@@ -33,7 +33,7 @@ from pyxmpp2.interfaces import XMPPFeatureHandler
 from pyxmpp2.interfaces import presence_stanza_handler, message_stanza_handler
 from pyxmpp2.ext.version import VersionProvider
 
-from settings import USER,PASSWORD, DEBUG, PIDPATH, __version__, STATUS, IMPORT
+from settings import USER,PASSWORD, DEBUG, PIDPATH, STATUS, IMPORT
 
 from db.member import add_member, del_member, get_member, get_members, get_nick
 from db.status import set_offline, empty_status, set_online
@@ -44,6 +44,7 @@ from message import MessageBus
 
 from epoll import EpollMainLoop
 
+__version__ = '0.3.0 alpha-epoll'
 
 class BotChat(EventHandler, XMPPFeatureHandler):
     def __init__(self):
