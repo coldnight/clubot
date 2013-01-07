@@ -245,12 +245,11 @@ def main():
             bot.disconnect()
         bot.connected = False
         if not bot.connected:
-            bot.disconnect()
             BotChat.trytimes += 1
-            sleeptime = 10 * bot.trytimes
+            sleeptime = 10 * BotChat.trytimes
             logger = get_logger()
             logger.info('Connect failed, will retry in {0}s of '
-                        '{1} times'.format(sleeptime, bot.trytimes))
+                        '{1} times'.format(sleeptime, BotChat.trytimes))
             time.sleep(sleeptime)
 
 
