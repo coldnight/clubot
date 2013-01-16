@@ -69,6 +69,7 @@ class BotChat(EventHandler, XMPPFeatureHandler):
         #self.client = Client(my_jid, [self, version_provider], settings)
         self.logger = get_logger()
         self.trytimes = 0
+        self.sended = []
         empty_status()
 
     def run(self, timeout = None):
@@ -87,8 +88,10 @@ class BotChat(EventHandler, XMPPFeatureHandler):
         add_member(frm)
         set_online(frm, stanza.show)
         r =[stanza.make_accept_response(), presence]
-        self.message_bus.send_sys_msg(stanza, new_member(frm))
-        self.message_bus.send_back_msg(stanza, welcome(frm))
+        if frm not in self.sended:
+            self.message_bus.send_sys_msg(stanza, new_member(frm))
+            self.message_bus.send_back_msg(stanza, welcome(frm))
+            self.sended.append(frm)
         return r
 
     @presence_stanza_handler("subscribed")
@@ -102,8 +105,10 @@ class BotChat(EventHandler, XMPPFeatureHandler):
         add_member(frm)
         set_online(frm, stanza.show)
         r =[stanza.make_accept_response(), presence]
-        self.message_bus.send_sys_msg(stanza, new_member(frm))
-        self.message_bus.send_back_msg(stanza, welcome(frm))
+        if frm not in self.sended:
+            self.message_bus.send_sys_msg(stanza, new_member(frm))
+            self.message_bus.send_back_msg(stanza, welcome(frm))
+            self.sended.append(frm)
         return r
 
     @presence_stanza_handler("unsubscribe")
