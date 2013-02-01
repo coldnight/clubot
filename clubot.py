@@ -20,6 +20,7 @@ import sys, os
 import time
 import signal
 import subprocess
+import traceback
 
 import pyxmpp2
 from pyxmpp2.jid import JID
@@ -250,6 +251,7 @@ def main():
             logger.info("Exiting...")
             sys.exit(1)
         except:
+            traceback.print_exc()
             bot.disconnect()
         bot.connected = False
         if not bot.connected:

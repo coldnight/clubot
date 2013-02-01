@@ -445,7 +445,8 @@ class CommandHandler(BaseHandler):
         if len(args) <= 1: return self.help(stanza, 'code')
         nick = get_nick(stanza.from_jid)
         typ = args[0]
-        codes = add_commends(args[1:], typ, nick)
+        #codes = add_commends(args[1:], typ, nick)
+        codes = args[1:]
         codes = ''.join(codes[0:2]) + ' '.join(codes[2:])
         poster = "Pythoner Club: %s" % nick
         r = paste_code(poster,typ, codes)

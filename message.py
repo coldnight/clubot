@@ -15,7 +15,7 @@ from db.info import add_info, get_info
 from db.member import get_members, get_nick
 from db.history import add_history
 
-from plugin.util import NOW, get_email, get_logger
+from plugin.util import NOW, get_email, get_logger, paste_code
 from plugin.cmd import CommandHandler, AdminCMDHandler
 from plugin.city import cityid
 
@@ -38,6 +38,7 @@ class MessageBus(object):
         self._thread_pool = ThreadPool(5)
         self._thread_pool.start()         # 启动线程池
         self.logger = get_logger()
+        self.offline_split_symbol = "$_$_$_$"
         return
 
     def make_message(self, to, typ, body):
@@ -85,7 +86,10 @@ class MessageBus(object):
             self.logger.debug("store offline message'{0}' for {1!r}"
                                     .format(body, to))
             offline_message = get_info('offline_message', to, '')
-            offline_message += '\n' +  body
+            off_msgs = offline_message.split(self.offline_split_symbol)
+            if len(off_msgs) >= 10:
+                offline_message = self.offline_split_symbol.join(off_msgs[-9:])
+            offline_message += self.offline_split_symbol +  body
             add_info('offline_message', offline_message, to)
 
     def send_offline_message(self, stanza):
@@ -94,11 +98,22 @@ class MessageBus(object):
         frm = stanza.from_jid
         offline_message = get_info('offline_message', frm)
         if offline_message:
+            off_msgs = offline_message.split(self.offline_split_symbol)
+            offline_message = "\n".join(off_msgs)
             offline_message = "离线期间的消息:\n" + offline_message
             m = self.make_message(frm, 'normal', offline_message)
             self._stream.send(m)
             set_online(frm, show)
             add_info('offline_message', '', frm)
+
+    def handle_code(self, stanza, body):
+        if body.startswith("```"):
+            bodys = body.split("\n")
+            typ = bodys[0].strip("`")
+            typ = typ if typ else "text"
+            codes = "\n".join(bodys[1:]).strip("```")
+            return paste_code(stanza.from_jid.bare().as_string(), typ, codes)
+        return body
 
     def send_all_msg(self, stanza, body):
         """ 给除了自己的所有成员发送消息 """
@@ -108,6 +123,12 @@ class MessageBus(object):
             return self.send_command(stanza, '-help')
         if body.strip() == 'ping':
             return self.send_command(stanza, '-_ping')
+        if body.startswith("```"):
+            body = self.handle_code(stanza, body)
+        if len(body) > 100:
+            url = self.handle_code(stanza, "```\n" + body)
+            body = u"{0}\n{1}".format(url, body.split("\n")[0][0:50])
+            self.send_back_msg(stanza, u"内容过长,贴到:{0}".format(url))
         mode = get_info('mode', stanza.from_jid)
         if mode == 'quiet':
             body = u'你处于{0},请使用-cd命令切换到 {1} '\
