@@ -131,6 +131,4 @@ class EpollMainLoop(MainLoopBase):
             sources_handled += 1
             self._configure_io_handler(self._handlers[fd])
 
-
         return sources_handled
-

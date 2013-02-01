@@ -3,7 +3,7 @@
 #
 # 生成命令
 #
-# Author : cold night
+# Author : cold
 # email  : wh_linux@126.com
 # 2012-09-27 13:38
 #   + 增加$list 时用户是否在线
@@ -47,6 +47,8 @@ from util import run_code, paste_code, add_commends
 from util import get_code_types, Complex, get_logger, get_email
 
 from pyxmpp2.jid import JID
+
+from dns import query
 
 from dice_gtalk import roll
 
@@ -165,8 +167,6 @@ class BaseHandler(object):
         del_channel_user(oldch)
         add_info('channel', channel, email)
         add_channel_user(channel)
-
-
 
 
 class CommandHandler(BaseHandler):
@@ -454,6 +454,16 @@ class CommandHandler(BaseHandler):
             self._send_cmd_result(stanza, r)
         else:
             self._send_cmd_result(stanza, '代码服务异常,通知管理员')
+
+    def dns(self, stanza, *args):
+        """ 使用VPS解析主机名 """
+        if len(args) < 1: return self.help(stanza, 'py')
+        host = ' '.join(args)
+        host = host.split(' ')[0]
+        result = query.socket.gethostbyname_ex(host.strip())[-1]
+        result = list(set(result))
+        result = '\n'.join(result)
+        self._send_cmd_result(stanza, result)
 
     def py(self, stanza, *args):
         """ 执行Python代码 """
