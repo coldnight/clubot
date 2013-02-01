@@ -393,7 +393,9 @@ class CommandHandler(BaseHandler):
         rp = get_rp(frm)
         nick = get_nick(frm)
         if not rp:
-            rp = random.randrange(0, 100)
+            t = random.randrange(1, 10)
+            rps = [random.randrange(0, 100) for i in xrange(0, t)]
+            rp = rps[random.randrange(0, len(rps) -1)] if len(rps) > 1 else rps[0]
             add_rp(frm, rp)
             body = ">>>{0} 进行了今日人品检测,人品值为 {1}".format(nick, rp)
             self._message_bus.send_sys_msg(stanza, body)
@@ -588,4 +590,3 @@ class AdminCMDHandler(CommandHandler):
             self._message_bus.send_message(stanza, email, body)
         body = '你将 {0} 移动到 {1} 频道'.format(','.join(nicks), distch)
         self._send_cmd_result(stanza, body)
-
