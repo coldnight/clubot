@@ -126,7 +126,7 @@ class MessageBus(object):
         if body.startswith("```"):
             body = self.handle_code(stanza, body)
             self.send_back_msg(stanza, body)
-        if len(body) > 100:
+        if len(body) > 200:
             url = self.handle_code(stanza, "```\n" + body)
             body = u"{0}\n{1}".format(url, body.split("\n")[0][0:50])
             self.send_back_msg(stanza, u"内容过长,贴到:{0}".format(url))
