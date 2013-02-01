@@ -109,7 +109,7 @@ class MessageBus(object):
     def handle_code(self, stanza, body):
         if body.startswith("```"):
             bodys = body.split("\n")
-            typ = bodys[0].strip("`")
+            typ = bodys[0].strip("`").strip()
             typ = typ if typ else "text"
             codes = "\n".join(bodys[1:]).strip("```")
             return paste_code(stanza.from_jid.bare().as_string(), typ, codes)
@@ -125,6 +125,7 @@ class MessageBus(object):
             return self.send_command(stanza, '-_ping')
         if body.startswith("```"):
             body = self.handle_code(stanza, body)
+            self.send_back_msg(stanza, body)
         if len(body) > 100:
             url = self.handle_code(stanza, "```\n" + body)
             body = u"{0}\n{1}".format(url, body.split("\n")[0][0:50])
