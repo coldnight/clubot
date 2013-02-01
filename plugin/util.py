@@ -64,7 +64,7 @@ def run_code(code):
 
 def get_code_types():
     """获取贴代码支持的类型"""
-    purl = "http://paste.linuxzen.com/paste"
+    purl = "http://paste.linuxzen.com"
     def handle(res):
         r = re.compile(r'<option\s+value="(.*?)".*?>(.*?)</option>')
         result = []
@@ -91,7 +91,7 @@ def get_code_types():
 def paste_code(poster, typ, codes):
     param = {'class':typ}
     param.update(poster=poster, code = codes, paste="发送")
-    purl = "http://paste.linuxzen.com/paste"
+    purl = "http://paste.linuxzen.com"
     get_url = lambda res:res.url
     try:
         url = http_helper(purl, param, get_url)
@@ -104,7 +104,6 @@ def paste_code(poster, typ, codes):
         return False
     else:
         return url
-
 
 def add_commends(codes, typ, nick):
     commends = {"actionscript": "// ", "actionscript-french" : "// ",
@@ -213,6 +212,3 @@ def get_email(frm):
     except:
         result = frm
     return result
-
-
-
