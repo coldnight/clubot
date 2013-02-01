@@ -124,12 +124,15 @@ class MessageBus(object):
         if body.strip() == 'ping':
             return self.send_command(stanza, '-_ping')
         if body.startswith("```"):
-            body = self.handle_code(stanza, body)
-            self.send_back_msg(stanza, body)
+            tmp = self.handle_code(stanza, body)
+            if tmp:
+                body = tmp
+                self.send_back_msg(stanza, body)
         if len(body) > 200:
             url = self.handle_code(stanza, "```\n" + body)
-            body = u"{0}\n{1}".format(url, body.split("\n")[0][0:50])
-            self.send_back_msg(stanza, u"内容过长,贴到:{0}".format(url))
+            if url:
+                body = u"{0}\n{1}".format(url, body.split("\n")[0][0:50])
+                self.send_back_msg(stanza, u"内容过长,贴到:{0}".format(url))
         mode = get_info('mode', stanza.from_jid)
         if mode == 'quiet':
             body = u'你处于{0},请使用-cd命令切换到 {1} '\
