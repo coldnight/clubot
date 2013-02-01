@@ -58,7 +58,7 @@ class BotChat(EventHandler, XMPPFeatureHandler):
                             "tls_verify_peer": False,
                             "starttls": True,
                             "ipv6":False,
-                            "poll_interval": 60
+                            "poll_interval": 10,
                             })
 
         settings["password"] = PASSWORD
@@ -246,16 +246,19 @@ def main():
         except pyxmpp2.exceptions.SASLAuthenticationFailed:
             logger.error('Username or Password Error!!!')
             sys.exit(2)
+        except KeyboardInterrupt:
+            logger.info("Exiting...")
+            sys.exit(1)
         except:
             bot.disconnect()
         bot.connected = False
         if not bot.connected:
             BotChat.trytimes += 1
             sleeptime = 10 * BotChat.trytimes
-            logger = get_logger()
             logger.info('Connect failed, will retry in {0}s of '
                         '{1} times'.format(sleeptime, BotChat.trytimes))
             time.sleep(sleeptime)
+    logger.warn("Loop Done")
 
 
 def restart(signum, stack):
