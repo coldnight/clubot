@@ -461,9 +461,12 @@ class CommandHandler(BaseHandler):
         if len(args) < 1: return self.help(stanza, 'py')
         host = ' '.join(args)
         host = host.split(' ')[0]
-        result = query.socket.gethostbyname_ex(host.strip())[-1]
-        result = list(set(result))
-        result = '\n'.join(result)
+        try:
+            result = query.socket.gethostbyname_ex(host.strip())[-1]
+            result = list(set(result))
+            result = '\n'.join(result)
+        except:
+            result = "解析失败"
         self._send_cmd_result(stanza, result)
 
     def py(self, stanza, *args):
