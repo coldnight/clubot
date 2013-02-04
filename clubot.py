@@ -79,7 +79,13 @@ class BotChat(EventHandler, XMPPFeatureHandler):
 
     def disconnect(self):
         self.client.disconnect()
-        return QUIT
+        while True:
+            try:
+                self.run(2)
+            except:
+                pass
+            else:
+                break
 
     @presence_stanza_handler("subscribe")
     def handle_presence_subscribe(self, stanza):
@@ -160,9 +166,7 @@ class BotChat(EventHandler, XMPPFeatureHandler):
 
     @event_handler(DisconnectedEvent)
     def handle_disconnected(self, event):
-        self.connected = False
-        self.client.main_loop.quit()
-
+        return QUIT
 
     @event_handler(ConnectedEvent)
     def handle_connected(self, event):
