@@ -257,13 +257,11 @@ def main():
         except:
             traceback.print_exc()
             bot.disconnect()
-        bot.connected = False
-        if not bot.connected:
-            BotChat.trytimes += 1
-            sleeptime = 10 * BotChat.trytimes
-            logger.info('Connect failed, will retry in {0}s of '
-                        '{1} times'.format(sleeptime, BotChat.trytimes))
-            time.sleep(sleeptime)
+        BotChat.trytimes += 1
+        sleeptime = 10 * BotChat.trytimes
+        logger.info('Connect failed, will retry in {0}s of '
+                    '{1} times'.format(sleeptime, BotChat.trytimes))
+        time.sleep(sleeptime)
     logger.warn("Loop Done")
 
 

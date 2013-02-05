@@ -104,6 +104,8 @@ class EpollMainLoop(MainLoopBase):
 
     def loop_iteration(self, timeout = 60):
         next_timeout, sources_handled = self._call_timeout_handlers()
+        if self.check_events():
+            return
         if self._quit:
             return sources_handled
         for handler in list(self._unprepared_handlers):
