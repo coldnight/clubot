@@ -49,7 +49,7 @@ class EpollMainLoop(MainLoopBase):
         fileno = handler.fileno()
         if old_fileno is not None and fileno != old_fileno:
             del self._handlers[old_fileno]
-            self._exists.pop(old_fileno, None)
+            self._exists_fd.pop(old_fileno, None)
             self.epoll.unregister(old_fileno)
         if not prepared:
             self._unprepared_handlers[handler] = fileno
@@ -97,7 +97,7 @@ class EpollMainLoop(MainLoopBase):
         if old_fileno is not None:
             try:
                 del self._handlers[old_fileno]
-                self._exists.pop(old_fileno, None)
+                self._exists_fd.pop(old_fileno, None)
                 self.epoll.unregister(old_fileno)
             except KeyError:
                 pass
