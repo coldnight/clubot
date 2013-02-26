@@ -27,6 +27,7 @@
     `note`       --- 备注
     `listtype`   --- 所属列表
     `id`       --- 唯一表示符
+    `notice`     --- 已通知的类型
 """
 import time
 import functools
@@ -72,9 +73,11 @@ class GTD(object):
             where = self._handle_author(frm)
             where += " and `status` != '{0}'".format(Status.DONE)
             lst = op.select(where = where)
-
-        lst = sorted(lst, cmp = todo_cmp)
-        return self._format_tasks(lst)
+        if lst:
+            lst = sorted(lst, cmp = todo_cmp)
+            return self._format_tasks(lst)
+        else:
+            return u"恭喜,没有未完成的任务"
 
     def up(self, tid, frm):
         task, where = self._get_task_by_id(tid, frm)
@@ -82,7 +85,7 @@ class GTD(object):
             priority = task.get("priority", 0)
             if priority < 3:
                 task["priority"] = priority + 1
-                op.update(set_dict = task, where = where)
+                op.update({"priority":priority +1 }, where = where)
                 return u"提升优先级成功"
             else:
                 return u"优先级已经最高"
@@ -92,8 +95,7 @@ class GTD(object):
         with self._mc() as op:
             priority = task.get("priority", 0)
             if priority > 0:
-                task["priority"] = priority -1
-                op.update(set_dict = task, where = where)
+                op.update({"priority":priority -1}, where = where)
                 return u"降低优先级成功"
             else:
                 return u"优先级已经最低"
@@ -102,9 +104,8 @@ class GTD(object):
         """ 设置过期时间 """
         task, where = self._get_task_by_id(tid, frm)
         _expirse = self._get_expirse(_time, task.get("pubdate"))
-        task["expirse"] = _expirse
         with self._mc() as op:
-            op.update(task, where = where)
+            op.update({"expirse":_expirse, "notice":"N"}, where = where)
 
     def done(self, tid, frm):
         task, where = self._get_task_by_id(tid, frm)
@@ -112,7 +113,55 @@ class GTD(object):
         task["donedate"] = datetime.now()
 
         with self._mc() as op:
-            op.update(task, where)
+            op.update({"status":Status.DONE, "donedate":datetime.now()}, where)
+
+    def check(self):
+        """ 循环返回快过期的todo事项 """
+        result = []
+        now = datetime.now()
+        today = now.strptime(now.strftime("%Y-%m-%d"), "%Y-%m-%d")
+        tomorrow = datetime.fromtimestamp(time.mktime(today.timetuple()) + 86400)
+        with self._mc() as op:
+            where = "`pubdate` < '{0}' and `expirse` < '{1}' and"\
+                    "`expirse`> '{0}' and `notice`!='D'"\
+                    .format(today, tomorrow)
+            lst = op.select(where = where)
+            if lst:
+                op.update({"notice":"D"}, where)
+                result.append({"info":u"下面TODO事项今天将要过期",
+                           "data":self._list_by_author(lst)})
+            later = datetime.fromtimestamp(time.mktime(now.timetuple()) + 300)
+            where = "`expirse` > '{0}' and `expirse` <= '{1}'"\
+                    "and `notice` != 'M'"\
+                    .format(now, later)
+            lst = op.select(where = where)
+            if lst:
+                result.append({"info":u"下面TODO事项将要过期",
+                           "data": self._list_by_author(lst)})
+                op.update({"notice":"M"}, where)
+            where = "`expirse` <= '{0}' and `notice` != 'E'"\
+                    .format(now)
+            lst = op.select(where = where)
+            if lst:
+                result.append({"info":u"下面TODO事项已经过期",
+                               "data":self._list_by_author(lst)})
+                op.update({"notice":"E"}, where = where)
+            return result
+
+    def _list_by_author(self, lst):
+        """ 将列表按照作者索引 """
+        todo_dict = {}
+        for l in lst:
+            author = l.get("author")
+            if todo_dict.has_key(author):
+                todo_dict[author].append(l)
+            else:
+                todo_dict[author] = [l]
+
+        for key in todo_dict:
+            todo_dict[key] = self._format_tasks(todo_dict[key])
+
+        return todo_dict
 
     def _get_task_by_id(self, tid, frm):
         with self._mc() as op:
@@ -160,9 +209,9 @@ class GTD(object):
     def _format_task_str(self, task):
         expirse = self._get_date_desc(task.get("expirse"))
         info = task.get("task")
-        last_info = u" [ID:{0} E:{1} T:{2} P:{3}]"\
+        last_info = u" [ID:{0} E:{1} T:{2} P:{3} S:{4}]"\
                 .format(task.get("id"), expirse, task.get("list_type"),
-                        task.get("priority", 0))
+                        task.get("priority", 0), task.get("status"))
         return info + last_info
 
     def _get_date_desc(self, dest):
@@ -212,3 +261,8 @@ class GTD(object):
         if sub >= 60:
             num = get_num(sub, 60)
             return "{0} minute(s) {1}".format(num, suffix)
+        if sub <= 60:
+            if suffix == "ago":
+                return "just now"
+            else:
+                return "right away"

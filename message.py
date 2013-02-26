@@ -6,6 +6,9 @@
 #   Date    :   12/12/25 16:40:36
 #   Desc    :   消息处理
 #
+import time
+import threading
+
 from pyxmpp2.jid import JID
 from pyxmpp2.message import Message
 from pyxmpp2.presence import Presence
@@ -35,8 +38,9 @@ class MessageBus(object):
         self._stream = stream
         self.cmd_handler = CommandHandler(message_bus = self)
         self.admin_cmd_handler = AdminCMDHandler(message_bus = self)
-        self._thread_pool = ThreadPool(5)
+        self._thread_pool = ThreadPool(6)
         self._thread_pool.start()         # 启动线程池
+        self._thread_pool.add_job(self.send_todo_expirse)
         self.logger = get_logger()
         self.offline_split_symbol = "$_$_$_$"
         return
@@ -200,3 +204,18 @@ class MessageBus(object):
                      stanza_type = 'unsubscribed')
         self._stream.send(p)
         self._stream.send(p1)
+
+    def send_todo_expirse(self):
+        """ 处理到期的todo事项, 需放到线程池中操作 """
+        if isinstance(threading.currentThread(), threading._MainThread):
+            raise RuntimeError, "can't running in MainThread"
+        while True:
+            time.sleep(30)
+            datas = self.cmd_handler._gtd.check()
+            for data in datas:
+                bodys = [data.get("info")]
+                messages = data.get("data")
+                for email in messages:
+                    bodys.append( messages[email])
+                    body = "\n".join(bodys)
+                    self._stream.send(self.make_message(email, "normal", body))

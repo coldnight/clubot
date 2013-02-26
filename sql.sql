@@ -104,6 +104,7 @@ create table if not exists todo(
     location VARCHAR(255) NULL,
     note TEXT NULL,
     `status` VARCHAR(2) NOT NULL DEFAULT "N",
+    `notice` VARCHAR(2) NOT NULL DEFAULT "N", -- D(Day) M(M)
     PRIMARY KEY(id),
     INDEX(author)
     )character set utf8;
