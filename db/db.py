@@ -50,6 +50,14 @@ class DatabaseOp(object):
         self.fields = self.get_table_fields()
         self.logger = get_logger()
 
+    def insert_dict(self, dic):
+        fields = []
+        values = []
+        for field, value in dic.items():
+            fields.append(field)
+            values.append(value)
+        self.insert(fields, values)
+
     def insert(self, fields, values):
         """ 插入操作,返回id """
         if len(fields) != len(values):

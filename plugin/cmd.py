@@ -42,6 +42,7 @@ from db.history import get_history
 from db.channel import add_channel, add_channel_user, del_channel_user
 from db.channel import get_channel
 from db.info import add_global_info, add_info, get_info, get_rp, add_rp
+from db.gtd import GTD
 from settings import __version__, LOGPATH, STATUS, MODES
 from util import run_code, paste_code, add_commends
 from util import get_code_types, Complex, get_logger, get_email
@@ -65,6 +66,7 @@ class BaseHandler(object):
         self._logger = get_logger()       # 日志
         self._cache = {}                  # 缓存
         self._modes = MODES               # 模式
+        self._gtd = GTD()
 
     def _set_cache(self, key, data, expires = None):
         """设置缓存 expires(秒) 设置过期时间None为永不过期"""
@@ -193,6 +195,8 @@ class CommandHandler(BaseHandler):
             self._send_cmd_result(stanza, body.strip())
         elif mode in ['c', 'channel']:
             self._ls_channels(stanza)
+        elif mode in ['t', 'todo']:
+            self._send_cmd_result(stanza, self._gtd.show(stanza.from_jid))
         else:
             members = get_members_info()
             nicks = [m.get('nick') for m in members]
@@ -210,7 +214,8 @@ class CommandHandler(BaseHandler):
                         -ls [ct|codetype]     查看允许的代码类型\n\
                         -ls [m|mode]          列出所有模式\n\
                         -ls [CHANNEL]         查看CHANNLE频道详细信息\n\
-                        -ls [c|channel]       列出所有频道'
+                        -ls [c|channel]       列出所有频道\n\
+                        -ls [t|todo]          列出所有代办事项'
                 self._send_cmd_result(stanza, body)
 
     def _ls_users(self, stanza):
@@ -508,6 +513,51 @@ class CommandHandler(BaseHandler):
         """ 查看自己的详细信息 """
         body = self._whois(stanza.from_jid)
         self._send_cmd_result(stanza, body)
+
+    def todo(self, stanza, *args):
+        """ 添加TODO事项 """
+        task = " ".join(args)
+        frm = stanza.from_jid
+        if task.strip():
+            self._gtd.todo(task, stanza.from_jid)
+        self._send_cmd_result(stanza, self._gtd.show(frm))
+
+    def gtd(self, stanza, *args):
+        """ 时间管理, 管理TODO事项 """
+        tid = None if len(args) < 2 else args[1]
+        frm = stanza.from_jid
+        help_info = "-gtd show   列出所有todo事项\n"\
+                    "-gtd up TASKID 提升TASKID的todo事项的优先级\n"\
+                    "-gtd down TASKID 降低TASKID的todo事项的优先级\n"\
+                    "-gtd expirse TASKID TIME 设置TASKID的todo事项的过期时间\n\
+                                 TIME可以为 1m/1h/1d or YYYY-MM-DD HH:MM\n"\
+                    "-gtd done TASKID    完成id为TASKID的TODO事项\n"\
+                    "-gtd postpone TASKID 推迟id为TASKID的TODO事项\n"\
+                    "-gtd drop TASKID    删除id为TASKID的TODO事项"
+        if len(args) < 1:
+            return self._send_cmd_result(stanza, help_info)
+        arg = args[0]
+        if arg == "show":
+            body = self._gtd.show(frm)
+        elif arg == "up" and tid:
+            body = self._gtd.up(args[1], frm)
+        elif arg == "down" and tid:
+            body = self._gtd.down(args[1], frm)
+        elif arg == "expirse" and tid and len(args) >= 3:
+            body = self._gtd.expirse(args[1], " ".join(args[2:]), frm)
+        elif arg == "done" and tid:
+            body = self._gtd.done(args[1], frm)
+        elif arg == "postpone" and tid:
+            body = self._gtd.postpone(args[1], frm)
+        elif arg == "drop" and tid:
+            body = self._gtd.drop(args[1], frm)
+        elif arg == "help":
+            body = help_info
+        else:
+            body = help_info
+
+        if body:
+            self._send_cmd_result(stanza, body)
 
     def version(self, stanza, *args):
         """显示版本信息"""

@@ -89,3 +89,21 @@ create table if not exists channel(
     PRIMARY KEY(id),
     INDEX(name)
     )character set utf8;
+
+create table if not exists todo(
+    id INT NOT NULL AUTO_INCREMENT,
+    author VARCHAR(100) NOT NULL,
+    assigned VARCHAR(100) NULL,
+    task TEXT NOT NULL,
+    priority TINYINT(1) NOT NULL DEFAULT 0,
+    list_type VARCHAR(20) NOT NULL DEFAULT "inbox",
+    pubdate TIMESTAMP NOT NULL,
+    expirse TIMESTAMP NULL,
+    donedate TIMESTAMP NULL,
+    `repeat` VARCHAR(255) NULL,
+    location VARCHAR(255) NULL,
+    note TEXT NULL,
+    `status` VARCHAR(2) NOT NULL DEFAULT "N",
+    PRIMARY KEY(id),
+    INDEX(author)
+    )character set utf8;
