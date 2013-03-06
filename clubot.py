@@ -78,7 +78,10 @@ class BotChat(EventHandler, XMPPFeatureHandler):
         self.client.run(timeout)
 
     def disconnect(self):
-        self.client.disconnect()
+        try:
+            self.client.disconnect()
+        except:
+            pass
         while True:
             try:
                 self.run(2)
