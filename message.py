@@ -154,7 +154,8 @@ class MessageBus(object):
         if body.startswith('/me'):
             body = body.replace('/me', nick + ' ')
         else:
-            body = "[{0}] {1}".format(nick, body)
+            if nick != "qxbot":
+                body = "[{0}] {1}".format(nick, body)
         [self.send_message(stanza, m, body) for m in members]
 
     def send_back_msg(self, stanza, body):
