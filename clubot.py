@@ -45,7 +45,7 @@ from message import MessageBus
 
 from epoll import EpollMainLoop
 
-__version__ = '0.3.0 alpha-epoll'
+__version__ = '0.4.0 alpha-gtd'
 
 class BotChat(EventHandler, XMPPFeatureHandler):
     trytimes = 0

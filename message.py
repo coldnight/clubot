@@ -52,7 +52,7 @@ class MessageBus(object):
             `body` - 消息主体
         """
         if typ not in ['normal', 'chat', 'groupchat', 'headline']:
-            typ = 'normal'
+            typ = 'chat'
         m = Message(from_jid = self.bot_jid, to_jid = to, stanza_type = typ,
                     body = body)
         return m
@@ -105,7 +105,7 @@ class MessageBus(object):
             off_msgs = offline_message.split(self.offline_split_symbol)
             offline_message = "\n".join(off_msgs)
             offline_message = "离线期间的消息:\n" + offline_message
-            m = self.make_message(frm, 'normal', offline_message)
+            m = self.make_message(frm, 'chat', offline_message)
             self._stream.send(m)
             set_online(frm, show)
             add_info('offline_message', '', frm)
@@ -218,4 +218,4 @@ class MessageBus(object):
                 for email in messages:
                     bodys.append( messages[email])
                     body = "\n".join(bodys)
-                    self._stream.send(self.make_message(email, "normal", body))
+                    self._stream.send(self.make_message(email, "chat", body))
