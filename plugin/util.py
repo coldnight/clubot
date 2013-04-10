@@ -56,9 +56,9 @@ def run_code(code):
     result = http_helper2(CODERUN, dict(code=code))
     status = result.get('status')
     if status:
-        body = "执行成功:\n" + result.get('out')
+        body = "[OK]: " + result.get('out')
     else:
-        body = "执行失败:\n" + result.get('err')
+        body = "[ERR]: " + result.get('err')
 
     return body
 

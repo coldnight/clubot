@@ -463,7 +463,7 @@ class CommandHandler(BaseHandler):
 
     def dns(self, stanza, *args):
         """ 使用VPS解析主机名 """
-        if len(args) < 1: return self.help(stanza, 'py')
+        if len(args) < 1: return self.help(stanza, 'dns')
         host = ' '.join(args)
         host = host.split(' ')[0]
         try:
@@ -479,7 +479,7 @@ class CommandHandler(BaseHandler):
         if len(args) < 1: return self.help(stanza, 'py')
         code = ' '.join(args)
         result = run_code(code)
-        body = u'执行代码:\n{0}\n'.format(code)
+        body = u'>>> {0}\n'.format(code)
         body += result
         self._message_bus.send_all_msg(stanza, body)
         self._send_cmd_result(stanza, result)
