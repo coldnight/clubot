@@ -14,8 +14,6 @@ USER = 'pythonerclub@jabber.org'
 
 PASSWORD = ''
 
-BRIDGE = "qxbot@vim-cn.com"   # 橋接帳號
-
 DEBUG = False
 
 IMPORT = False # 如果数据库中有而角色中无则添加好友
