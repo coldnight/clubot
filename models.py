@@ -26,7 +26,7 @@ session = Session()
 Base = declarative_base()
 
 class Member(Base):
-    __tablename__ = "members"
+    __tablename__ = "clubot_members"
 
     id = Column(Integer, primary_key = True)
     email = Column(String(100), unique = True)
@@ -46,14 +46,14 @@ class Member(Base):
 
 
 class Info(Base):
-    __tablename__ = "infos"
+    __tablename__ = "clubot_infos"
 
     id = Column(Integer, primary_key = True)
     key = Column(String(255))
     value = Column(TEXT)
     is_global = Column(Integer, default=0)
 
-    member_id = Column(Integer, ForeignKey("members.id"))
+    member_id = Column(Integer, ForeignKey("clubot_members.id"))
     member = relation("Member", backref="infos", lazy=False)
 
     def __init__(self, key, value, is_global = False):
@@ -66,11 +66,11 @@ class Info(Base):
 
 
 class History(Base):
-    __tablename__ = "history"
+    __tablename__ = "clubot_history"
 
     id = Column(Integer, primary_key = True)
 
-    from_member = Column(Integer, ForeignKey("members.id"))
+    from_member = Column(Integer, ForeignKey("clubot_members.id"))
     to_member = Column(String(100))
 
     member = relation("Member", backref="history", lazy=False)
@@ -88,7 +88,7 @@ class History(Base):
 
 
 class Status(Base):
-    __tablename__ = "status"
+    __tablename__ = "clubot_status"
 
     id = Column(Integer, primary_key = True)
 
@@ -96,7 +96,7 @@ class Status(Base):
     statustext = Column(String(100), nullable=True)
     resource = Column(String(255), nullable = True)
 
-    member_id = Column(Integer, ForeignKey("members.id"))
+    member_id = Column(Integer, ForeignKey("clubot_members.id"))
 
     member = relation("Member", backref="status", lazy=False)
 

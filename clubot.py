@@ -15,6 +15,8 @@
 # 2012-11-19 14:00
 #     * 修复断开自动重启
 #
+from __future__ import absolute_import
+
 import logging
 import sys, os
 import time
@@ -36,11 +38,12 @@ from pyxmpp2.ext.version import VersionProvider
 
 from logics import Logics
 from message import MessageBus
-from epoll import EpollMainLoop
+#from epoll import EpollMainLoop
+from mtornado import TornadoMainLoop
 from utility import welcome, new_member, get_logger
 from settings import USER,PASSWORD, DEBUG, PIDPATH, STATUS, IMPORT
 
-__version__ = '0.4.0 alpha-gtd'
+__version__ = '0.5.0 alpha'
 
 class BotChat(EventHandler, XMPPFeatureHandler):
     trytimes = 0
@@ -60,7 +63,7 @@ class BotChat(EventHandler, XMPPFeatureHandler):
         settings["password"] = PASSWORD
         version_provider = VersionProvider(settings)
         self.connected = False
-        mainloop = EpollMainLoop(settings)
+        mainloop = TornadoMainLoop(settings)
         self.client = Client(my_jid, [self, version_provider], settings, mainloop)
         #self.client = Client(my_jid, [self, version_provider], settings)
         self.logger = get_logger()
