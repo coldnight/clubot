@@ -6,21 +6,14 @@
 #   Date    :   12/12/25 16:40:36
 #   Desc    :   消息处理
 #
-import time
-import threading
-
 from pyxmpp2.jid import JID
 from pyxmpp2.message import Message
 from pyxmpp2.presence import Presence
 
-from db.status import is_online, set_online
-from db.info import add_info, get_info
-from db.member import get_members, get_nick
-from db.history import add_history
-
-from plugin.util import NOW, get_email, get_logger, paste_code
-from plugin.cmd import CommandHandler, AdminCMDHandler
-from plugin.city import cityid
+from logics import Logics
+from utility import NOW, get_email, get_logger, paste_code
+from command import CommandHandler, AdminCMDHandler
+from city import cityid
 
 from settings import ADMINS, MODES
 
@@ -40,7 +33,6 @@ class MessageBus(object):
         self.admin_cmd_handler = AdminCMDHandler(message_bus = self)
         self._thread_pool = ThreadPool(6)
         self._thread_pool.start()         # 启动线程池
-        self._thread_pool.add_job(self.send_todo_expirse)
         self.logger = get_logger()
         self.offline_split_symbol = "$_$_$_$"
         return
@@ -64,7 +56,7 @@ class MessageBus(object):
     def send_private_msg(self, stanza, to, body):
         """ 发送私信 """
         frm = stanza.from_jid
-        nick = get_nick(frm)
+        nick = Logics.get_one(frm).nick
         body = "[%s 悄悄对你说] %s" % (nick, body)
         self.send_message(stanza, to, body, True)
 
@@ -76,9 +68,9 @@ class MessageBus(object):
             `log`      - 记录历史消息
         """
         if log:
-            add_history(stanza.from_jid, to, body)
-        if is_online(to):
-            mode = get_info('mode', to)
+            Logics.add_history(stanza.from_jid, to, body)
+        if Logics.is_online(to):
+            mode = Logics.get_info(to, 'mode')
             if mode == 'talk' or not mode:
                 if isinstance(to, (str, unicode)):
                     to = JID(to)
@@ -89,26 +81,26 @@ class MessageBus(object):
             body = NOW() + ' ' + body
             self.logger.debug("store offline message'{0}' for {1!r}"
                                     .format(body, to))
-            offline_message = get_info('offline_message', to, '')
+            offline_message = Logics.get_info(to, 'offline_message', '')
             off_msgs = offline_message.split(self.offline_split_symbol)
             if len(off_msgs) >= 10:
                 offline_message = self.offline_split_symbol.join(off_msgs[-9:])
             offline_message += self.offline_split_symbol +  body
-            add_info('offline_message', offline_message, to)
+            Logics.set_info(to, 'offline_message', offline_message)
 
     def send_offline_message(self, stanza):
         """ 发送离线消息 """
         show = stanza.show
         frm = stanza.from_jid
-        offline_message = get_info('offline_message', frm)
+        offline_message = Logics.get_info(frm, 'offline_message')
         if offline_message:
             off_msgs = offline_message.split(self.offline_split_symbol)
             offline_message = "\n".join(off_msgs)
             offline_message = "离线期间的消息:\n" + offline_message
             m = self.make_message(frm, 'chat', offline_message)
             self._stream.send(m)
-            set_online(frm, show)
-            add_info('offline_message', '', frm)
+            Logics.set_online(frm, show)
+            Logics.set_info(frm, 'offline_message', '')
 
     def handle_code(self, stanza, body):
         if body.startswith("```"):
@@ -137,20 +129,18 @@ class MessageBus(object):
             if url:
                 body = u"{0}\n{1}".format(url, body.split("\n")[0][0:50])
                 self.send_back_msg(stanza, u"内容过长,贴到:{0}".format(url))
-        mode = get_info('mode', stanza.from_jid)
+        mode = Logics.get_info(stanza.from_jid, 'mode')
         if mode == 'quiet':
             body = u'你处于{0},请使用-cd命令切换到 {1} '\
                     u'后发言'.format(MODES[mode], MODES['talk'])
             return self.send_back_msg(stanza, body)
 
-        add_history(stanza.from_jid, 'all', body)
-        members = get_members(stanza.from_jid)
-        current = get_info('channel', stanza.from_jid, 'main')
-        members = [m for m in members
-                   if get_info('channel', m, 'main') == current]
+        Logics.add_history(stanza.from_jid, 'all', body)
+        members = Logics.get_members(stanza.from_jid)
+        members = [m.email for m in members]
         self.logger.info("{0} send message {1} to {2!r}"
                             .format(stanza.from_jid, body, members))
-        nick = get_nick(stanza.from_jid)
+        nick = Logics.get_one(stanza.from_jid).nick
         if body.startswith('/me'):
             body = body.replace('/me', nick + ' ')
         else:
@@ -166,7 +156,8 @@ class MessageBus(object):
 
     def send_sys_msg(self, stanza, body):
         """ 发送系统消息 """
-        members = get_members()
+        members = Logics.get_members()
+        members = [m.email for m in members]
         [self.send_message(stanza, m, body) for m in members]
 
     def send_command(self, stanza,  body):
@@ -205,18 +196,3 @@ class MessageBus(object):
                      stanza_type = 'unsubscribed')
         self._stream.send(p)
         self._stream.send(p1)
-
-    def send_todo_expirse(self):
-        """ 处理到期的todo事项, 需放到线程池中操作 """
-        if isinstance(threading.currentThread(), threading._MainThread):
-            raise RuntimeError, "can't running in MainThread"
-        while True:
-            time.sleep(30)
-            datas = self.cmd_handler._gtd.check()
-            for data in datas:
-                bodys = [data.get("info")]
-                messages = data.get("data")
-                for email in messages:
-                    bodys.append( messages[email])
-                    body = "\n".join(bodys)
-                    self._stream.send(self.make_message(email, "chat", body))

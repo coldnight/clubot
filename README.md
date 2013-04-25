@@ -1,11 +1,11 @@
-需要:
+需要
     python2.7
-安装:
+安装
     需要安装pyxmpp2(dnspython)模块
     因少量的使用Linux shell命令,所以需要再win下运行需要对代码进行稍微的修改
-配置:
+配置
     在settings.py填入bot的帐号和密码,和相应的管理员信息,关闭DEBUG
-运行:
+运行
     启动:
         python clubot.py
     停止:

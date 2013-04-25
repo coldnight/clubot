@@ -13,7 +13,7 @@ import select
 from pyxmpp2.mainloop.interfaces import HandlerReady, PrepareAgain
 from pyxmpp2.mainloop.base import MainLoopBase
 
-from plugin.util import get_logger
+from utility import get_logger
 
 
 
