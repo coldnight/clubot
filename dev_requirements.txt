@@ -1,2 +1,3 @@
 pyxmpp2
 sqlalchemy
+tornado
