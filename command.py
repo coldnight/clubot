@@ -42,7 +42,7 @@ from dns import query
 from pyxmpp2.jid import JID
 
 from logics import Logics
-from settings import __version__, LOGPATH, STATUS, MODES, ADMINS
+from settings import  LOGPATH, STATUS, MODES, ADMINS
 from utility import run_code
 from utility import  Complex, get_logger, get_email, roll
 
@@ -356,16 +356,6 @@ class CommandHandler(BaseHandler):
     def me(self, stanza, *args):
         """ 查看自己的详细信息 """
         self.whois(stanza, Logics.get_one(stanza.from_jid).nick)
-
-
-    def version(self, stanza, *args):
-        """显示版本信息"""
-        author = ['cold(wh_linux@126.com)',
-                    'eleven.i386(eleven.i386@gmail.com)',]
-        body = "version %s\nauthors\n\t%s\n" % (__version__,
-                                                '\n\t'.join(author))
-        body += "\nhttps://github.com/coldnight/clubot"
-        return self._send_cmd_result(stanza, body)
 
 
 class AdminCMDHandler(CommandHandler):
