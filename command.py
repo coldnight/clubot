@@ -42,7 +42,7 @@ from dns import query
 from pyxmpp2.jid import JID
 
 from logics import Logics
-from settings import  LOGPATH, STATUS, MODES, ADMINS
+from settings import  LOGPATH, STATUS, MODES, ADMINS, USER
 from utility import run_code
 from utility import  Complex, get_logger, get_email, roll
 
@@ -143,6 +143,8 @@ class CommandHandler(BaseHandler):
         onlines = []
         offlines = []
         for m in members:
+            if m.email == USER:
+                continue
             status = m.status
             isonline = bool([status.status for status in m.status
                          if status.status])
