@@ -214,7 +214,18 @@ class CommandHandler(BaseHandler):
     def rp(self, stanza, *args):
         """ 测试今日RP """
         frm = stanza.from_jid
-        rp = Logics.get_info(frm, "rp_date")
+
+        rp = None
+        rp_date = Logics.get_info(frm, "rp_date").value
+
+        if rp_date:
+            rp_date = datetime.fromtimestamp(float(rp_date))
+            now = datetime.now()
+
+            if now.year == rp_date.year and now.month == rp_date.month and \
+            now.day == rp_date.day:
+                rp = Logics.get_info(frm, "rp").value
+
         nick = Logics.get_one(frm).nick
         if not rp:
             t = random.randrange(1, 10)
@@ -254,14 +265,14 @@ class CommandHandler(BaseHandler):
                         if status.status])
         status = u"在线" if isonline else u"离线"
         resource = " ".join(s.statustext for s in m.status if s.statustext)
-        rp = Logics.get_info(m.email, "rp_date")
+        rp = Logics.get_info(m.email, "rp_date").value
         rp = rp if rp else u"尚未测试"
         say_times = 0 if not m.history else len(m.history)
         level = u"管理员" if m.email in ADMINS else u"成员"
         last_say = u"从未发言" if not m.last_say else m.last_say
         last_change = m.last_change if m.last_change else u"从未修改"
-        change_times = Logics.get_info(m.email, "change_nick_times", 0)
-        mode = Logics.get_info(stanza.from_jid, 'mode')
+        change_times = Logics.get_info(m.email, "change_nick_times", 0).value
+        mode = Logics.get_info(stanza.from_jid, 'mode').value
         is_rece = u"是" if mode != "quiet" else u"否"
         bodys.append(u"昵称: {0}     状态: {1}".format(m.nick, status))
         bodys.append(u"资源: {0}     权限: {1}".format(resource, level))

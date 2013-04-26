@@ -70,7 +70,7 @@ class MessageBus(object):
         if log:
             Logics.add_history(stanza.from_jid, to, body)
         if Logics.is_online(to):
-            mode = Logics.get_info(to, 'mode')
+            mode = Logics.get_info(to, 'mode').value
             if mode == 'talk' or not mode:
                 if isinstance(to, (str, unicode)):
                     to = JID(to)
@@ -81,7 +81,7 @@ class MessageBus(object):
             body = NOW() + ' ' + body
             self.logger.debug("store offline message'{0}' for {1!r}"
                                     .format(body, to))
-            offline_message = Logics.get_info(to, 'offline_message', '')
+            offline_message = Logics.get_info(to, 'offline_message', '').value
             off_msgs = offline_message.split(self.offline_split_symbol)
             if len(off_msgs) >= 10:
                 offline_message = self.offline_split_symbol.join(off_msgs[-9:])
@@ -92,7 +92,7 @@ class MessageBus(object):
         """ 发送离线消息 """
         show = stanza.show
         frm = stanza.from_jid
-        offline_message = Logics.get_info(frm, 'offline_message')
+        offline_message = Logics.get_info(frm, 'offline_message').value
         if offline_message:
             off_msgs = offline_message.split(self.offline_split_symbol)
             offline_message = "\n".join(off_msgs)
@@ -129,7 +129,7 @@ class MessageBus(object):
             if url:
                 body = u"{0}\n{1}".format(url, body.split("\n")[0][0:50])
                 self.send_back_msg(stanza, u"内容过长,贴到:{0}".format(url))
-        mode = Logics.get_info(stanza.from_jid, 'mode')
+        mode = Logics.get_info(stanza.from_jid, 'mode').value
         if mode == 'quiet':
             body = u'你处于{0},请使用-cd命令切换到 {1} '\
                     u'后发言'.format(MODES[mode], MODES['talk'])

@@ -199,7 +199,7 @@ class BotChat(EventHandler, XMPPFeatureHandler):
 
     @event_handler(RosterReceivedEvent)
     def handle_roster_received(self, event):
-        dbstatus = Logics.get_global_info('status')
+        dbstatus = Logics.get_global_info('status').value
         if not dbstatus:
             status = STATUS
         else:

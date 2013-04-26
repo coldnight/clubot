@@ -12,13 +12,13 @@ from sqlalchemy.orm import sessionmaker, relation
 from sqlalchemy.ext.declarative import declarative_base
 
 from utility import get_email, now
-from settings import DB_HOST, DB_PORT, DB_USER, DB_PASSWD, DB_NAME
+from settings import DB_HOST, DB_PORT, DB_USER, DB_PASSWD, DB_NAME, DEBUG
 
 db_scheme = "mysql://{0}:{1}@{2}:{3}/{4}?charset=utf8".format(DB_USER,DB_PASSWD,
                                                  DB_HOST, DB_PORT,
                                                  DB_NAME)
 
-engine = create_engine(db_scheme)
+engine = create_engine(db_scheme, echo = DEBUG)
 
 Session = sessionmaker(bind = engine)
 session = Session()
@@ -51,6 +51,7 @@ class Info(Base):
     id = Column(Integer, primary_key = True)
     key = Column(String(255))
     value = Column(TEXT)
+    pubdate = Column(TIMESTAMP)
     is_global = Column(Integer, default=0)
 
     member_id = Column(Integer, ForeignKey("clubot_members.id"))
@@ -60,6 +61,7 @@ class Info(Base):
         self.key = key
         self.value = value
         self.is_global = 1 if is_global else 0
+        self.pubdate = now()
 
     def __repr__(self):
         return u"<Info ('%s', '%s')>" % (self.key, self.value)

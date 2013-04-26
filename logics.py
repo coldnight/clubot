@@ -156,11 +156,10 @@ class Logics(object):
             info = session.query(Info).filter(and_(Info.key == key,
                                                    Info.member == m,
                                                    Info.is_global == 0)).one()
-            value = info.value
         except NoResultFound:
-            value = default
+            info = cls.set_info(jid, key, default)
 
-        return value
+        return info
 
 
     @classmethod
@@ -178,12 +177,15 @@ class Logics(object):
                                                    Info.is_global == 0)).one()
             info.value = value
         except NoResultFound:
+            info = Info(key, value)
             if m.infos:
-                m.infos.append(Info(key, value))
+                m.infos.append(info)
             else:
-                m.infos = [Info(key, value)]
+                m.infos = [info]
         finally:
             session.commit()
+
+        return info
 
 
     @staticmethod
@@ -196,11 +198,10 @@ class Logics(object):
         try:
             info = session.query(Info).filter(and_(Info.key == key,
                                                    Info.is_global == 1)).one()
-            value = info.value
         except NoResultFound:
-            value = default
+            info = Logics.set_global_info(key, default)
 
-        return value
+        return info
 
     @staticmethod
     def set_global_info(key, value):
@@ -216,7 +217,10 @@ class Logics(object):
         except NoResultFound:
             info = Info(key, value, True)
             session.add(info)
-        session.commit()
+        finally:
+            session.commit()
+
+        return info
 
     @classmethod
     def add_history(cls, jid, to_jid, content):

@@ -65,6 +65,7 @@ def update():
                 .filter(OldInfo.email == om.email).all()
         for oi in oldinfos:
             nin = models.Info(oi.key, oi.value.decode("utf-8"))
+            nin.pubdate = oi.createdate
             if m.infos:
                 m.infos.append(nin)
             else:
