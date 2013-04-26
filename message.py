@@ -92,7 +92,7 @@ class MessageBus(object):
         """ 发送离线消息 """
         show = stanza.show
         frm = stanza.from_jid
-        offline_message = Logics.get_info(frm, 'offline_message').value
+        offline_message = Logics.get_info(frm, 'offline_message', '').value
         if offline_message:
             off_msgs = offline_message.split(self.offline_split_symbol)
             offline_message = "\n".join(off_msgs)

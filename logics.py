@@ -159,6 +159,9 @@ class Logics(object):
         except NoResultFound:
             info = cls.set_info(jid, key, default)
 
+        if info.value is None and info.value != default:
+            info.value = default
+
         return info
 
 
@@ -200,6 +203,9 @@ class Logics(object):
                                                    Info.is_global == 1)).one()
         except NoResultFound:
             info = Logics.set_global_info(key, default)
+
+        if info.value is None:
+            info.value = default
 
         return info
 
