@@ -37,14 +37,7 @@ class Logics(object):
         try:
             m = session.query(Member).filter(Member.email == email).one()
         except NoResultFound:
-            m = Member(jid)
-            try:
-                session.add(m)
-            except:
-                m = None
-                session.rollback()
-            else:
-                session.commit()
+            m = None
         return m
 
     @classmethod
@@ -101,6 +94,7 @@ class Logics(object):
             True    // 更改昵称成功
         """
         m = cls.get_one(jid)
+        if not m: return False
         if m:
             exists = cls.get_with_nick(nick)
             if exists:
@@ -120,6 +114,8 @@ class Logics(object):
             `show`  -   stanza.show
         """
         m = cls.get_one(jid)
+        if not m:
+            return False
         try:
             status = session.query(Status)\
                     .filter(and_(Status.resource == jid.resource,
@@ -134,9 +130,12 @@ class Logics(object):
         finally:
             session.commit()
 
+        return True
+
     @classmethod
     def set_offline(cls, jid):
         m = cls.get_one(jid)
+        if not m: return False
         try:
             status = session.query(Status)\
                     .filter(and_(Status.resource == jid.resource,
