@@ -161,6 +161,7 @@ class Logics(object):
 
         if info.value is None and info.value != default:
             info.value = default
+            session.commit()
 
         return info
 
@@ -206,6 +207,7 @@ class Logics(object):
 
         if info.value is None:
             info.value = default
+            session.commit()
 
         return info
 
