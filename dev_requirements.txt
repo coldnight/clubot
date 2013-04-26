@@ -1,3 +1,4 @@
 pyxmpp2
 sqlalchemy
 tornado
+MySQL-python
