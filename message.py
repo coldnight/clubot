@@ -15,7 +15,7 @@ from utility import NOW, get_email, get_logger, paste_code
 from command import CommandHandler, AdminCMDHandler
 from city import cityid
 
-from settings import ADMINS, MODES
+from settings import ADMINS, MODES, USER
 
 from thread_pool import ThreadPool
 
@@ -67,6 +67,8 @@ class MessageBus(object):
             `body`     - 消息主体
             `log`      - 记录历史消息
         """
+        if to == USER:
+            return
         if log:
             Logics.add_history(stanza.from_jid, to, body)
         if Logics.is_online(to):
