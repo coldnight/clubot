@@ -274,7 +274,7 @@ class CommandHandler(BaseHandler):
         isonline = bool([status.status for status in m.status
                         if status.status])
         status = u"在线" if isonline else u"离线"
-        resource = " ".join(s.resouce for s in m.status if s.resource)
+        resource = " ".join(s.resource for s in m.status if s.resource)
         rp = Logics.get_info(m.email, "rp_date").value
         rp = rp if rp else u"尚未测试"
         say_times = 0 if not m.history else len(m.history)
