@@ -263,6 +263,7 @@ class CommandHandler(BaseHandler):
         m = Logics.get_with_nick(nick)
         if not m:
             self._send_cmd_result(stanza, u"{0} 用户不存在".format(nick))
+            return
         bodys = []
         isonline = bool([status.status for status in m.status
                         if status.status])
