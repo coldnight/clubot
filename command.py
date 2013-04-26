@@ -219,7 +219,10 @@ class CommandHandler(BaseHandler):
         rp_date = Logics.get_info(frm, "rp_date").value
 
         if rp_date:
-            rp_date = datetime.fromtimestamp(float(rp_date))
+            try:
+                rp_date = datetime.fromtimestamp(float(rp_date))
+            except:
+                rp_date = datetime.now()
             now = datetime.now()
 
             if now.year == rp_date.year and now.month == rp_date.month and \
