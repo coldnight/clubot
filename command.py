@@ -151,19 +151,15 @@ class CommandHandler(BaseHandler):
             status_text = " ".join(status.statustext for status in m.status
                                     if status.statustext)
             if m.email == femail:
-                r = "** {0}".format(m.nick)
+                onlines.append("** {0}".format(m.nick))
             elif m.email != femail and isonline:
-                r = "* {0} {1}".format(m.nick, status_text)
+                onlines.append("* {0} {1}".format(m.nick, status_text))
             else:
-                r = "  {0}".format(m.nick)
-            if isonline:
-                onlines.append(r)
-            else:
-                offlines.append(r)
+                offlines.append("  {0}".format(m.nick))
         onlines = sorted(onlines, key = lambda k:k.decode('utf-8')[1],
-                         reverse=False)
+                         reverse=True)
         offlines = sorted(offlines, key = lambda k:k.decode('utf-8')[1],
-                          reverse=False)
+                          reverse=True)
         body = []
         body.insert(0, 'Pythoner Club 所有成员(** 表示你自己, * 表示在线):')
         body.extend(onlines)
