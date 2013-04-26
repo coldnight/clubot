@@ -259,7 +259,10 @@ class CommandHandler(BaseHandler):
 
     def whois(self, stanza, *args):
         """ 查询用户信息 """
-        m = Logics.get_with_nick(' '.join(args[0:]))
+        nick = ' '.join(args[0:])
+        m = Logics.get_with_nick(nick)
+        if not m:
+            self._send_cmd_result(stanza, u"{0} 用户不存在".format(nick))
         bodys = []
         isonline = bool([status.status for status in m.status
                         if status.status])

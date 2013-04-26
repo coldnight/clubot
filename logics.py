@@ -38,8 +38,13 @@ class Logics(object):
             m = session.query(Member).filter(Member.email == email).one()
         except NoResultFound:
             m = Member(jid)
-            session.add(m)
-            session.commit()
+            try:
+                session.add(m)
+            except:
+                m = None
+                session.rollback()
+            else:
+                session.commit()
         return m
 
     @classmethod
