@@ -47,14 +47,14 @@ class OldHistory(models.Base):
 def update():
     oldms = models.session.query(OldMember).all()
     for om in oldms:
-        m = models.Member(om.email, om.nick)
+        m = models.Member(om.email, om.nick.decode("utf-8"))
         m.last_say = om.last
         m.last_change = om.lastchange
         m.join_date = om.date
         histories = models.session.query(OldHistory)\
                 .filter(OldHistory.frmemail == om.email).all()
         for history in histories:
-            h = models.History(history.toemail, history.content)
+            h = models.History(history.toemail, history.content.decode("utf-8"))
             h.pubdate = history.date
             if m.history:
                 m.history.append(h)
@@ -64,7 +64,7 @@ def update():
         oldinfos = models.session.query(OldInfo)\
                 .filter(OldInfo.email == om.email).all()
         for oi in oldinfos:
-            nin = models.Info(oi.key, oi.value)
+            nin = models.Info(oi.key, oi.value.decode("utf-8"))
             if m.infos:
                 m.infos.append(nin)
             else:
@@ -73,7 +73,7 @@ def update():
 
     oginfos = models.session.query(OldInfo).filter(OldInfo.email == "global").all()
     for oi in oginfos:
-        nin = models.Info(oi.key, io.value, True)
+        nin = models.Info(oi.key, oi.value.decode("utf-8"), True)
         models.session.add(nin)
 
     models.session.commit()
