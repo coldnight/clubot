@@ -163,11 +163,7 @@ class Logics(object):
                                                    Info.member == m,
                                                    Info.is_global == 0)).one()
         except NoResultFound:
-            info = cls.set_info(jid, key, default)
-
-        if info.value is None and info.value != default:
-            info.value = default
-            session.commit()
+            info = Info(key, default)
 
         return info
 
