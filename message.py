@@ -6,6 +6,8 @@
 #   Date    :   12/12/25 16:40:36
 #   Desc    :   消息处理
 #
+import time
+import threading
 from pyxmpp2.jid import JID
 from pyxmpp2.message import Message
 from pyxmpp2.presence import Presence
@@ -31,10 +33,11 @@ class MessageBus(object):
         self._stream = stream
         self.cmd_handler = CommandHandler(message_bus = self)
         self.admin_cmd_handler = AdminCMDHandler(message_bus = self)
-        self._thread_pool = ThreadPool(6)
-        self._thread_pool.start()         # 启动线程池
         self.logger = get_logger()
         self.offline_split_symbol = "$_$_$_$"
+        self._thread_pool = ThreadPool(6)
+        self._thread_pool.add_job(self.send_heart_msg)
+        self._thread_pool.start()         # 启动线程池
         return
 
     def make_message(self, to, typ, body):
@@ -115,6 +118,8 @@ class MessageBus(object):
 
     def send_all_msg(self, stanza, body):
         """ 给除了自己的所有成员发送消息 """
+        if stanza.from_jid.bare().as_string() == USER:
+            return
         if cityid(body.strip()):
             return self.send_command(stanza, '-_tq ' + body.strip())
         if body.strip() == 'help':
@@ -198,3 +203,14 @@ class MessageBus(object):
                      stanza_type = 'unsubscribed')
         self._stream.send(p)
         self._stream.send(p1)
+
+    def send_heart_msg(self):
+        """ 给自己发消息保持服务器状态, 防止被服务器踢下线 """
+        if isinstance(threading.current_thread(), threading._MainThread):
+            raise threading.ThreadError, "can't run this method in MainThread"
+        while True:
+            time.sleep(10)
+            message = self.make_message(USER, 'chat', " ")
+            self.logger.info("Send ' ' to self to hold server connect")
+            self._stream.send(message)
+            time.sleep(3600)
