@@ -228,11 +228,7 @@ class Logics(object):
             info = session.query(Info).filter(and_(Info.key == key,
                                                    Info.is_global == 1)).one()
         except NoResultFound:
-            info = Logics.set_global_info(key, default)
-
-        if info.value is None:
-            info.value = default
-            session.commit()
+            info = Info(key, default)
 
         return info
 
