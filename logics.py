@@ -208,7 +208,8 @@ class Logics(object):
             try:
                 rp_date = datetime.fromtimestamp(float(rp_date))
             except:
-                rp_date = datetime.now()
+                rp_date = time.time() - 86400
+                rp_date = datetime.fromtimestamp(float(rp_date))
             now = datetime.now()
 
             if now.year == rp_date.year and now.month == rp_date.month and \
