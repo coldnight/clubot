@@ -212,22 +212,8 @@ class CommandHandler(BaseHandler):
     def rp(self, stanza, *args):
         """ 测试今日RP """
         frm = stanza.from_jid
-
-        rp = None
-        rp_date = Logics.get_info(frm, "rp_date").value
-
-        if rp_date:
-            try:
-                rp_date = datetime.fromtimestamp(float(rp_date))
-            except:
-                rp_date = datetime.now()
-            now = datetime.now()
-
-            if now.year == rp_date.year and now.month == rp_date.month and \
-            now.day == rp_date.day:
-                rp = Logics.get_info(frm, "rp").value
-
         nick = Logics.get_one(frm).nick
+        rp = Logics.get_today_rp(frm)
         if not rp:
             t = random.randrange(1, 10)
             rps = [random.randrange(0, 100) for i in xrange(0, t)]
@@ -271,7 +257,7 @@ class CommandHandler(BaseHandler):
                         if status.status])
         status = u"在线" if isonline else u"离线"
         resource = " ".join(s.resource for s in m.status if s.resource)
-        rp = Logics.get_info(m.email, "rp").value
+        rp = Logics.get_today_rp(stanza.from_jid)
         rp = rp if rp else u"尚未测试"
         say_times = 0 if not m.history else len(m.history)
         level = u"管理员" if m.email in ADMINS else u"成员"

@@ -17,7 +17,7 @@ from settings import DB_HOST, DB_PORT, DB_USER, DB_PASSWD, DB_NAME, DEBUG
 db_scheme = "mysql://{0}:{1}@{2}:{3}/{4}?charset=utf8".format(DB_USER,DB_PASSWD,
                                                  DB_HOST, DB_PORT,
                                                  DB_NAME)
-
+DEBUG = False
 engine = create_engine(db_scheme, echo = DEBUG)
 
 Session = sessionmaker(bind = engine)

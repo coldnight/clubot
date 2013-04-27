@@ -6,6 +6,8 @@
 #   Date    :   13/04/25 14:14:33
 #   Desc    :   逻辑
 #
+import time
+from datetime import datetime
 from sqlalchemy import and_
 from sqlalchemy.orm.exc import NoResultFound
 
@@ -194,6 +196,28 @@ class Logics(object):
             session.commit()
 
         return info
+
+
+    @classmethod
+    def get_today_rp(cls, jid):
+        """ 获取今日rp """
+        rp = None
+        rp_date = Logics.get_info(jid, "rp_date").value
+
+        if rp_date:
+            try:
+                rp_date = datetime.fromtimestamp(float(rp_date))
+            except:
+                rp_date = datetime.now()
+            now = datetime.now()
+
+            if now.year == rp_date.year and now.month == rp_date.month and \
+            now.day == rp_date.day:
+                rp = Logics.get_info(jid, "rp").value
+
+        return rp
+
+
 
 
     @staticmethod
