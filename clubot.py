@@ -240,7 +240,8 @@ def main():
         try:
             pid = os.fork()
             if pid > 0:
-                with open(PIDPATH, 'w') as f: f.write(str(pid))
+                with open(PIDPATH, 'w') as f:
+                    f.write(str(pid))
                 os.waitpid(pid, 0)
                 main()
             else:
@@ -294,6 +295,8 @@ if __name__ == '__main__':
     elif args.action == 'stop':
         try:
             logger.info("Stop the bot")
-            with open(PIDPATH, 'r') as f: os.kill(int(f.read()), 9)
+            PID = int(open(PIDPATH, 'r').read())
+            os.kill(PID -1, 9)
+            os.kill(PID, 9)
         except Exception, e:
             logger.error("Stop failed line:%d error:%s", e.errno, e.strerror)
