@@ -19,7 +19,6 @@ from __future__ import absolute_import
 
 import logging
 import sys, os
-import time
 import signal
 import subprocess
 import traceback
@@ -224,7 +223,7 @@ class BotChat(EventHandler, XMPPFeatureHandler):
 def main():
     logger = get_logger()
     if not PASSWORD:
-        logger.error(u'Please write the password in the settings.py')
+        print >>sys.stderr, 'Please write the password in the settings.py'
         sys.exit(2)
     if not DEBUG:
         try:
@@ -241,32 +240,25 @@ def main():
         try:
             pid = os.fork()
             if pid > 0:
-                logger.info("Daemon PID %d" , pid)
                 with open(PIDPATH, 'w') as f: f.write(str(pid))
-                sys.exit(0)
+                os.waitpid(pid, 0)
+                main()
+            else:
+                bot = BotChat()
+                try:
+                    bot.run()
+                except pyxmpp2.exceptions.SASLAuthenticationFailed:
+                    logger.error('Username or Password Error!!!')
+                    sys.exit(2)
+                except KeyboardInterrupt:
+                    logger.info("Exiting...")
+                    sys.exit(1)
+                except:
+                    traceback.print_exc()
+                    bot.disconnect()
         except OSError, e:
             logger.error("Daemon started failed: %d (%s)", e.errno, e.strerror)
             os.exit(1)
-    while True:
-        bot = BotChat()
-        try:
-            bot.run()
-        except pyxmpp2.exceptions.SASLAuthenticationFailed:
-            logger.error('Username or Password Error!!!')
-            sys.exit(2)
-        except KeyboardInterrupt:
-            logger.info("Exiting...")
-            sys.exit(1)
-        except:
-            traceback.print_exc()
-            bot.disconnect()
-        BotChat.trytimes += 1
-        sleeptime = 10 * BotChat.trytimes
-        logger.info('Connect failed, will retry in {0}s of '
-                    '{1} times'.format(sleeptime, BotChat.trytimes))
-        time.sleep(sleeptime)
-    logger.warn("Loop Done")
-
 
 def restart(signum, stack):
     logger = get_logger()
