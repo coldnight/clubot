@@ -19,8 +19,6 @@ from __future__ import absolute_import
 
 import logging
 import sys, os
-import signal
-import subprocess
 import traceback
 
 import pyxmpp2
@@ -261,16 +259,6 @@ def main():
             logger.error("Daemon started failed: %d (%s)", e.errno, e.strerror)
             os.exit(1)
 
-def restart(signum, stack):
-    logger = get_logger()
-    logger.info('Restart...')
-    PID = int(open(PIDPATH, 'r').read())
-    pf = os.path.join(os.path.dirname(__file__), __file__)
-    cmd = r'kill -9 {0} && python {1} '.format(PID, pf)
-    subprocess.Popen(cmd, stdin = subprocess.PIPE, stdout = subprocess.PIPE,
-                     stderr = subprocess.PIPE, shell = True)
-
-signal.signal(signal.SIGHUP, restart)
 
 if __name__ == '__main__':
     logger = get_logger()
@@ -286,7 +274,9 @@ if __name__ == '__main__':
     if args.action == 'run': main()
     elif args.action == 'restart':
         try:
-            with open(PIDPATH, 'r') as f: os.kill(int(f.read()), 1)
+            logger.info('Restart...')
+            PID = int(open(PIDPATH, 'r').read())
+            os.kill(PID, 9)
         except Exception, e:
             logger.error('Restart failed %s: %s', e.errno, e.strerror)
             logger.info("Try start...")
