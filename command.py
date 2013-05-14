@@ -284,13 +284,16 @@ class CommandHandler(BaseHandler):
         nick = ' '.join(args[0:])
         frm = stanza.from_jid
         oldnick = Logics.get_one(frm).nick
+        if nick == oldnick:
+            self._send_cmd_result(stanza, u"你已经在使用这个昵称")
+            return
         r = Logics.modify_nick(frm, nick)
         if r:
             body = "%s 更改昵称为 %s" % (oldnick, nick)
             self._message_bus.send_sys_msg(stanza, body)
             self._send_cmd_result(stanza, u'你的昵称现在的已经已经更改为 {0}'.format(nick))
         else:
-            self._send_cmd_result(stanza, '昵称已存在')
+            self._send_cmd_result(stanza, u'昵称已存在')
 
 
     def dns(self, stanza, *args):
