@@ -104,7 +104,7 @@ class Logics(object):
             m.nick = nick
             m.last_change = now()
             cls.set_info(jid, "change_nick_times",
-                         int(cls.get_info(jid, "change_nick_times", 0)) + 1)
+                         int(cls.get_info(jid, "change_nick_times", 0).value) + 1)
             session.commit()
             return True
 
