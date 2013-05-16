@@ -63,6 +63,18 @@ def run_code(code):
 
     return body
 
+def shell(email, code):
+    CODERUN = "http://pythonec.appspot.com/shell"
+    result = http_helper2(CODERUN, dict(session = email, statement=code))
+    if not result:
+        body = "[OK]"
+    else:
+        body = "[OUT] " + result
+
+    return body
+
+
+
 def get_code_types():
     """获取贴代码支持的类型"""
     purl = "http://paste.linuxzen.com"

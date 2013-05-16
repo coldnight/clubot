@@ -43,7 +43,7 @@ from pyxmpp2.jid import JID
 
 from logics import Logics
 from settings import  LOGPATH, STATUS, MODES, ADMINS, USER
-from utility import run_code
+from utility import run_code, shell
 from utility import  Complex, get_logger, get_email, roll
 
 
@@ -294,6 +294,16 @@ class CommandHandler(BaseHandler):
             self._send_cmd_result(stanza, u'你的昵称现在的已经已经更改为 {0}'.format(nick))
         else:
             self._send_cmd_result(stanza, u'昵称已存在')
+
+
+    def shell(self, stanza, *args):
+        """ 一个Python shell, 也可通过 >>> <statement>来执行"""
+        if len(args) < 1: return self.help(stanza, 'shell')
+        code = ' '.join(args)
+        email = get_email(stanza.from_jid)
+        body = shell(email, code)
+        nick = Logics.get_one(stanza.from_jid).nick
+        self._message_bus.send_sys_msg(stanza, u"{0}: {1}".format(nick, body))
 
 
     def dns(self, stanza, *args):
