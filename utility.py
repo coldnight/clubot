@@ -65,7 +65,7 @@ def run_code(code):
 
 def shell(email, code):
     CODERUN = "http://pythonec.appspot.com/shell"
-    result = http_helper2(CODERUN, dict(session = email, statement=code))
+    result = http_helper2(CODERUN, dict(session = email, statement=code), "GET")
     if not result:
         body = "[OK]"
     else:
