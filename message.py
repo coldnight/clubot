@@ -131,6 +131,10 @@ class MessageBus(object):
             if tmp:
                 body = tmp
                 self.send_back_msg(stanza, body)
+
+        if body.startswith(">>>"):
+            self.cmd_handler.shell(stanza, body.lstrip(">").lstrip())
+
         if len(body) > 200:
             url = self.handle_code(stanza, "```\n" + body)
             if url:
