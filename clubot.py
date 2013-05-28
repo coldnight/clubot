@@ -258,6 +258,10 @@ def main():
         except OSError, e:
             logger.error("Daemon started failed: %d (%s)", e.errno, e.strerror)
             os.exit(1)
+    else:
+        bot = BotChat()
+        bot.run()
+
 
 
 if __name__ == '__main__':

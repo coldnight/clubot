@@ -36,6 +36,7 @@ import time
 import random
 import traceback
 from datetime import datetime
+from functools import partial
 
 from dns import query
 
@@ -43,8 +44,10 @@ from pyxmpp2.jid import JID
 
 from logics import Logics
 from settings import  LOGPATH, STATUS, MODES, ADMINS, USER
-from utility import run_code, shell
+from utility import run_code
 from utility import  Complex, get_logger, get_email, roll
+
+from http_stream import HTTPStream
 
 
 
@@ -60,6 +63,7 @@ class BaseHandler(object):
     def __init__(self, message_bus):
         self._message_bus = message_bus   # 消息总线
         self._logger = get_logger()       # 日志
+        self._http_stream = HTTPStream.instance()
 
     def _send_cmd_result(self, stanza, body):
         """返回命令结果"""
@@ -301,9 +305,56 @@ class CommandHandler(BaseHandler):
         if len(args) < 1: return self.help(stanza, 'shell')
         code = ' '.join(args)
         email = get_email(stanza.from_jid)
-        body = shell(email, code)
-        nick = Logics.get_one(stanza.from_jid).nick
-        self._message_bus.send_sys_msg(stanza, u"{0}: {1}".format(nick, body))
+        if code.strip() in ["cls", "clear"]:
+            url = "http://pythonec.appspot.com/drop"
+            params = [("session", email),]
+        else:
+            url = "http://pythonec.appspot.com/shell"
+            #url = "http://localhost:8880/shell"
+            params =  dict(session = email, statement=code.encode("utf-8"))
+
+        request = self._http_stream.make_get_request(url, params)
+
+        def read_shell(resp):
+            result = resp.read()
+            nick = Logics.get_one(stanza.from_jid).nick
+            if not result:
+                nick = "{0}:[OK]".format(nick)
+            else:
+                nick = "{0}:[OUT]".format(nick)
+
+            if len(result) > 200:
+                callback = partial(self._message_bus.send_sys_msg, stanza)
+                self._paste(stanza, "python", result, nick, callback)
+            else:
+                self._message_bus.send_sys_msg(stanza, u"{0} {1}"
+                                               .format(nick, result))
+
+        self._http_stream.add_request(request, read_shell)
+
+
+    def _paste(self, stanza, typ, code, nick, callback):
+        """ 贴代码, paste <type> <code>
+        参数
+            stanza  消息节
+            typ     类型
+            code    代码
+            nick    昵称
+            callback    回调
+        """
+        param = {'class':typ}
+        param.update(poster=stanza.from_jid.bare(), code = code)
+        url = "http://paste.linuxzen.com"
+        req = self._http_stream.make_post_request(url, param)
+        def __paste(resp):
+            if resp.code == 302:
+                nurl = resp.headers.get("Location")
+            else:
+                nurl = resp.url
+            if nurl != url:
+                callback("{0} {1}".format(nick, nurl))
+
+        self._http_stream.add_request(req, __paste)
 
 
     def dns(self, stanza, *args):
