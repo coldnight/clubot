@@ -105,7 +105,10 @@ class Logics(object):
             m.last_change = now()
             cls.set_info(jid, "change_nick_times",
                          int(cls.get_info(jid, "change_nick_times", 0).value) + 1)
-            session.commit()
+            try:
+                session.commit()
+            except:
+                session.rollback()
             return True
 
     @classmethod
@@ -130,7 +133,10 @@ class Logics(object):
             else:
                 m.status = [status]
         finally:
-            session.commit()
+            try:
+                session.commit()
+            except:
+                session.rollback()
 
         return True
 
@@ -143,8 +149,11 @@ class Logics(object):
                     .filter(and_(Status.resource == jid.resource,
                                  Status.member == m)).one()
             m.status.pop(m.status.index(status))
-            session.delete(status)
-            session.commit()
+            try:
+                session.delete(status)
+                session.commit()
+            except:
+                session.rollback()
         except NoResultFound:
             pass
 
@@ -189,7 +198,10 @@ class Logics(object):
             else:
                 m.infos = [info]
         finally:
-            session.commit()
+            try:
+                session.commit()
+            except:
+                session.rollback()
 
         return info
 
@@ -245,9 +257,15 @@ class Logics(object):
             info.value = value
         except NoResultFound:
             info = Info(key, value, True)
-            session.add(info)
+            try:
+                session.add(info)
+            except:
+                session.rollback()
         finally:
-            session.commit()
+            try:
+                session.commit()
+            except:
+                session.rollback()
 
         return info
 
@@ -260,7 +278,10 @@ class Logics(object):
         else:
             m.history = [History(to_jid, content)]
 
-        session.commit()
+        try:
+            session.commit()
+        except:
+            session.rollback()
 
     @classmethod
     def get_history(cls, jid = None,  starttime = None):
@@ -295,6 +316,12 @@ class Logics(object):
     def empty_status():
         all_status = session.query(Status).all()
         for status in all_status:
-            session.delete(status)
+            try:
+                session.delete(status)
+            except:
+                session.rollback()
 
-        session.commit()
+        try:
+            session.commit()
+        except:
+            session.rollback()
