@@ -32,9 +32,12 @@
 #   + 添加cd命令用于模式处理
 #   + 添加me命令用于查看自己的信息
 #
+import json
 import time
+import gzip
 import random
 import traceback
+from cStringIO import StringIO
 from datetime import datetime
 from functools import partial
 
@@ -44,12 +47,10 @@ from pyxmpp2.jid import JID
 
 from logics import Logics
 from settings import  LOGPATH, STATUS, MODES, ADMINS, USER
-from utility import run_code
-from utility import  Complex, get_logger, get_email, roll
+from utility import  get_logger, get_email, roll, cityid
 
 from http_stream import HTTPStream
-
-
+from settings import YOUDAO_KEY, YOUDAO_KEYFROM
 
 
 class BaseHandler(object):
@@ -189,18 +190,23 @@ class CommandHandler(BaseHandler):
             self._send_cmd_result(stanza, u"我不知道 {0} 这种模式".format(mode))
 
 
-    def trans(self, stanza, *args):
-        """中日英翻译,默认英-汉翻译"""
-        trans = Complex()
-        return self._send_cmd_result(stanza, trans.trans([x for x in args]))
-
-
     def _tq(self, stanza, *args):
         """指定城市获取天气"""
-        tq = Complex()
-        body = tq.tq(''.join([x for x in args]))
-        self._send_cmd_result(stanza, body)
-        self._message_bus.send_all_msg(stanza, body)
+        body = ''.join([x for x in args])
+        key = cityid(body.encode('utf-8'))
+        url = 'http://www.weather.com.cn/data/cityinfo/' + key
+        def readback(resp):
+            load = json.loads(resp.read())
+            body = 'city:%s, Weather %s, %s ~ %s' %\
+                    (load['weatherinfo']['city'],
+                     load['weatherinfo']['weather'],
+                     load['weatherinfo']['temp1'],
+                     load['weatherinfo']['temp2'])
+            self._send_cmd_result(stanza, body)
+            self._message_bus.send_all_msg(stanza, body)
+
+        self._http_stream.get(url, readback = readback)
+
 
     def r(self,stanza,*args):
         """20面骰子,使用:1d20+1 攻击 @submit by:欧剃 @add by: eleven.i386"""
@@ -313,7 +319,6 @@ class CommandHandler(BaseHandler):
             #url = "http://localhost:8880/shell"
             params =  dict(session = email, statement=code.encode("utf-8"))
 
-        request = self._http_stream.make_get_request(url, params)
 
         def read_shell(resp):
             result = resp.read()
@@ -330,7 +335,7 @@ class CommandHandler(BaseHandler):
                 self._message_bus.send_sys_msg(stanza, u"{0} {1}"
                                                .format(nick, result))
 
-        self._http_stream.add_request(request, read_shell)
+        self._http_stream.get(url, params, readback = read_shell)
 
 
     def _paste(self, stanza, typ, code, nick, callback):
@@ -345,7 +350,6 @@ class CommandHandler(BaseHandler):
         param = {'class':typ}
         param.update(poster=stanza.from_jid.bare(), code = code)
         url = "http://paste.linuxzen.com"
-        req = self._http_stream.make_post_request(url, param)
         def __paste(resp):
             if resp.code == 302:
                 nurl = resp.headers.get("Location")
@@ -354,7 +358,7 @@ class CommandHandler(BaseHandler):
             if nurl != url:
                 callback("{0} {1}".format(nick, nurl))
 
-        self._http_stream.add_request(req, __paste)
+        self._http_stream.post(url, param, readback = __paste)
 
 
     def dns(self, stanza, *args):
@@ -368,16 +372,6 @@ class CommandHandler(BaseHandler):
             result = '\n'.join(result)
         except:
             result = "解析失败"
-        self._send_cmd_result(stanza, result)
-
-    def py(self, stanza, *args):
-        """ 执行Python代码 """
-        if len(args) < 1: return self.help(stanza, 'py')
-        code = ' '.join(args)
-        result = run_code(code)
-        body = u'>>> {0}\n'.format(code)
-        body += result
-        self._message_bus.send_all_msg(stanza, body)
         self._send_cmd_result(stanza, result)
 
 
@@ -423,6 +417,69 @@ class CommandHandler(BaseHandler):
     def me(self, stanza, *args):
         """ 查看自己的详细信息 """
         self.whois(stanza, Logics.get_one(stanza.from_jid).nick)
+
+    def tr(self, stanza, *args):
+        """ 调用有道接口进行英汉互译 """
+        key = YOUDAO_KEY
+        keyfrom = YOUDAO_KEYFROM
+        source = " ".join(args)
+        source = source.encode("utf-8")
+        url = "http://fanyi.youdao.com/openapi.do"
+        params = [("keyfrom", keyfrom), ("key", key),("type", "data"),
+                  ("doctype", "json"), ("version",1.1), ("q", source)]
+
+        def read_back(resp):
+            source = resp.read()
+            body = None
+            try:
+                buf = StringIO(source)
+                with gzip.GzipFile(mode = "rb", fileobj = buf) as gf:
+                    data = gf.read()
+            except:
+                self._logger.warn(traceback.format_exc())
+                data = source
+
+            try:
+                result = json.loads(data)
+            except ValueError:
+                self._logger.warn(traceback.format_exc())
+                body = u"error"
+            else:
+                errorCode = result.get("errorCode")
+                if errorCode == 0:
+                    query = result.get("query")
+                    r = " ".join(result.get("translation"))
+                    basic = result.get("basic", {})
+                    body = u"{0}\n{1}".format(query, r)
+                    phonetic = basic.get("phonetic")
+                    if phonetic:
+                        ps = phonetic.split(",")
+                        if len(ps) == 2:
+                            pstr = u"读音: 英 [{0}] 美 [{1}]".format(*ps)
+                        else:
+                            pstr = u"读音: {0}".format(*ps)
+                        body += u"\n" + pstr
+
+                    exp = basic.get("explains")
+                    if exp:
+                        body += u"\n其他释义:\n\t{0}".format(u"\n\t".join(exp))
+
+                        """
+                        if web:
+                            for w in web:
+                                body += u"\t{0}\n".format(w.get("key"))
+                                vs = u"\n\t\t".join(w.get("value"))
+                                body += u"\t\t{0}\n".format(vs)
+                        """
+
+                if errorCode == 50:
+                    body = u"无效的有道key"
+
+            if not body:
+                body = u"没有结果"
+            self._send_cmd_result(stanza, body)
+
+        self.http_stream.get(url, params, readback =read_back)
 
 
 class AdminCMDHandler(CommandHandler):

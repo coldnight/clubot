@@ -35,7 +35,6 @@ from pyxmpp2.ext.version import VersionProvider
 
 from logics import Logics
 from message import MessageBus
-#from epoll import EpollMainLoop
 from mtornado import TornadoMainLoop
 from utility import welcome, new_member, get_logger
 from settings import USER,PASSWORD, DEBUG, PIDPATH, STATUS, IMPORT

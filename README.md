@@ -35,3 +35,10 @@ python clubot.py --restart  # 重启
 * 加入`HTTPStream`支持更快的HTTP请求
 * 通过`HTTPStream`支持更快的Python shell
 * 当Python shell返回过长时贴到网页上, 防止刷屏
+
+### 2013-07-17
+* 清除废弃的代码
+* 改用HTTPStream废弃并清楚线程池
+* 更新HTTPStream
+* 废弃`-py`命令
+* 废弃`-trans`命令, 使用`-tr`命令

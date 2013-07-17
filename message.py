@@ -19,7 +19,6 @@ from city import cityid
 
 from settings import ADMINS, MODES, USER
 
-from thread_pool import ThreadPool
 
 class MessageBus(object):
     """ 消息总线
@@ -35,9 +34,6 @@ class MessageBus(object):
         self.admin_cmd_handler = AdminCMDHandler(message_bus = self)
         self.logger = get_logger()
         self.offline_split_symbol = "$_$_$_$"
-        self._thread_pool = ThreadPool(6)
-        self._thread_pool.add_job(self.send_heart_msg)
-        self._thread_pool.start()         # 启动线程池
         return
 
     def make_message(self, to, typ, body):
@@ -181,7 +177,7 @@ class MessageBus(object):
             target = self.admin_cmd_handler._run_cmd
         else:
             target = self.cmd_handler._run_cmd
-        self._thread_pool.add_job(target, stanza, body)
+        target(stanza, body)
 
     def send_status(self, statustext, to = None):
         if to:

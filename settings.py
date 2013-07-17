@@ -3,7 +3,6 @@
 """
 # 设置
 """
-import os
 import sys
 reload(sys)
 sys.setdefaultencoding('utf-8')
@@ -26,3 +25,10 @@ DB_PASSWD = ''
 STATUS = u"Pythoner Club Linux/Vim/Python 技术交流"
 MODES  = dict(talk = u'聊天模式', quiet = u'安静模式(不接收消息)')
 ADMINS = ['coldnight.linux@gmail.com']
+
+
+# 下面是有道辞典需要的api, 可以到下面网站申请一个key和keyfrom
+# http://fanyi.youdao.com/openapi
+YOUDAO_KEY = 1234567890
+
+YOUDAO_KEYFROM = "clubot"
