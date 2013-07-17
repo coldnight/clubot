@@ -8,12 +8,13 @@
 #
 import time
 import threading
+from functools import partial
 from pyxmpp2.jid import JID
 from pyxmpp2.message import Message
 from pyxmpp2.presence import Presence
 
 from logics import Logics
-from utility import NOW, get_email, get_logger, paste_code
+from utility import NOW, get_email, get_logger
 from command import CommandHandler, AdminCMDHandler
 from city import cityid
 
@@ -103,17 +104,18 @@ class MessageBus(object):
             Logics.set_online(frm, show)
             Logics.set_info(frm, 'offline_message', '')
 
-    def handle_code(self, stanza, body):
+    def handle_code(self, stanza, body, nick, back):
         if body.startswith("```"):
             bodys = body.split("\n")
             typ = bodys[0].strip("`").strip()
             typ = typ if typ else "text"
             codes = "\n".join(bodys[1:]).strip("```")
-            return paste_code(stanza.from_jid.bare().as_string(), typ, codes)
-        return body
+            self.cmd_handler._paste(stanza, typ, codes, nick, back)
+
 
     def send_all_msg(self, stanza, body):
         """ 给除了自己的所有成员发送消息 """
+        nick = Logics.get_one(stanza.from_jid).nick
         if stanza.from_jid.bare().as_string() == USER:
             return
         if cityid(body.strip()):
@@ -123,31 +125,39 @@ class MessageBus(object):
         if body.strip() == 'ping':
             return self.send_command(stanza, '-_ping')
         if body.startswith("```"):
-            tmp = self.handle_code(stanza, body)
-            if tmp:
-                body = tmp
-                self.send_back_msg(stanza, body)
+            back = partial(self.send_back_msg, stanza)
+            self.handle_code(stanza, body, nick, back)
 
-        if body.startswith(">>>"):
-            self.cmd_handler.shell(stanza, body.lstrip(">").lstrip())
-
-        if len(body) > 200:
-            url = self.handle_code(stanza, "```\n" + body)
-            if url:
-                body = u"{0}\n{1}".format(url, body.split("\n")[0][0:50])
-                self.send_back_msg(stanza, u"内容过长,贴到:{0}".format(url))
         mode = Logics.get_info(stanza.from_jid, 'mode').value
         if mode == 'quiet':
             body = u'你处于{0},请使用-cd命令切换到 {1} '\
                     u'后发言'.format(MODES[mode], MODES['talk'])
             return self.send_back_msg(stanza, body)
 
-        Logics.add_history(stanza.from_jid, 'all', body)
+
+        if body.startswith(">>>"):
+            self.cmd_handler.shell(stanza, body.lstrip(">").lstrip())
+
         members = Logics.get_members(stanza.from_jid)
         members = [m.email for m in members]
+
+        if len(body) > 200:
+            def long_back(body, content):
+                nick, url = content.split(" ")
+                body = u"{0}\n{1}".format(url, body.split("\n")[0][0:50])
+                self.send_back_msg(stanza, u"内容过长,贴到:{0}".format(url))
+                self.logger.info("{0} send message {1} to {2!r}"
+                                    .format(stanza.from_jid, body, members))
+                Logics.add_history(stanza.from_jid, 'all', body)
+                [self.send_message(stanza, m, body) for m in members]
+
+            back = partial(long_back, body)
+            self.handle_code(stanza, "```\n" + body, nick, back)
+            return
+
+        Logics.add_history(stanza.from_jid, 'all', body)
         self.logger.info("{0} send message {1} to {2!r}"
                             .format(stanza.from_jid, body, members))
-        nick = Logics.get_one(stanza.from_jid).nick
         if body.startswith('/me'):
             body = body.replace('/me', nick + ' ')
         else:

@@ -194,7 +194,7 @@ class CommandHandler(BaseHandler):
         """指定城市获取天气"""
         body = ''.join([x for x in args])
         key = cityid(body.encode('utf-8'))
-        url = 'http://www.weather.com.cn/data/cityinfo/' + key
+        url = 'http://www.weather.com.cn/data/cityinfo/' + key + ".html"
         def readback(resp):
             load = json.loads(resp.read())
             body = 'city:%s, Weather %s, %s ~ %s' %\
@@ -479,7 +479,7 @@ class CommandHandler(BaseHandler):
                 body = u"没有结果"
             self._send_cmd_result(stanza, body)
 
-        self.http_stream.get(url, params, readback =read_back)
+        self._http_stream.get(url, params, readback =read_back)
 
 
 class AdminCMDHandler(CommandHandler):

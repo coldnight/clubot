@@ -8,7 +8,6 @@
 #
 import random
 import logging
-import urllib, urllib2, json
 from datetime import datetime
 from settings import DEBUG
 from settings import LOGPATH
@@ -36,7 +35,7 @@ def get_logger(name = None):
     else:
         hdl = logging.FileHandler(LOGPATH)
         level = logging.INFO
-    fmt = logging.Formatter("[%(threadName)s] %(asctime)s %(levelname)s %(message)s")
+    fmt = logging.Formatter("%(asctime)s %(levelname)s %(message)s")
     hdl.setFormatter(fmt)
     handler = hdl
     logger.handlers = []
