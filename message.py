@@ -14,9 +14,8 @@ from pyxmpp2.message import Message
 from pyxmpp2.presence import Presence
 
 from logics import Logics
-from utility import NOW, get_email, get_logger
+from utility import NOW, get_email, get_logger, cityid
 from command import CommandHandler, AdminCMDHandler
-from city import cityid
 
 from settings import ADMINS, MODES, USER
 
@@ -213,14 +212,3 @@ class MessageBus(object):
                      stanza_type = 'unsubscribed')
         self._stream.send(p)
         self._stream.send(p1)
-
-    def send_heart_msg(self):
-        """ 给自己发消息保持服务器状态, 防止被服务器踢下线 """
-        if isinstance(threading.current_thread(), threading._MainThread):
-            raise threading.ThreadError, "can't run this method in MainThread"
-        while True:
-            time.sleep(10)
-            message = self.make_message(USER, 'chat', " ")
-            self.logger.info("Send ' ' to self to hold server connect")
-            self._stream.send(message)
-            time.sleep(3600)

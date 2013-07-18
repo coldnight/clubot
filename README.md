@@ -12,8 +12,6 @@ pip install -r dev_requirements.txt
 ### 运行
 ```bash
 python clubot.py      # 运行
-python clubot.py --stop  # 停止
-python clubot.py --restart  # 重启
 ```
 
 ## 更新内容
@@ -42,3 +40,7 @@ python clubot.py --restart  # 重启
 * 更新HTTPStream
 * 废弃`-py`命令
 * 废弃`-trans`命令, 使用`-tr`命令
+
+### 2013-07-18
+* 不使用 fork 将进程至于后台
+* 不再解析命令行参数

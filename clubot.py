@@ -18,7 +18,7 @@
 from __future__ import absolute_import
 
 import logging
-import sys, os
+import sys
 import traceback
 
 import pyxmpp2
@@ -37,7 +37,7 @@ from logics import Logics
 from message import MessageBus
 from mtornado import TornadoMainLoop
 from utility import welcome, new_member, get_logger
-from settings import USER,PASSWORD, DEBUG, PIDPATH, STATUS, IMPORT
+from settings import USER, PASSWORD, STATUS, IMPORT
 
 __version__ = '0.5.0 alpha'
 
@@ -218,78 +218,24 @@ class BotChat(EventHandler, XMPPFeatureHandler):
 
 
 def main():
-    logger = get_logger()
     if not PASSWORD:
         print >>sys.stderr, 'Please write the password in the settings.py'
         sys.exit(2)
-    if not DEBUG:
-        try:
-            with open(PIDPATH, 'r') as f: os.kill(int(f.read()), 9)
-        except: pass
-        try:
-            pid = os.fork()
-            if pid > 0: sys.exit(0)
-        except OSError, e:
-            logger.error("Fork #1 failed: %d (%s)", e.errno, e.strerror)
-            sys.exit(1)
-        os.setsid()
-        os.umask(0)
-        try:
-            pid = os.fork()
-            if pid > 0:
-                with open(PIDPATH, 'w') as f:
-                    f.write(str(pid))
-                os.waitpid(pid, 0)
-                main()
-            else:
-                bot = BotChat()
-                try:
-                    bot.run()
-                except pyxmpp2.exceptions.SASLAuthenticationFailed:
-                    logger.error('Username or Password Error!!!')
-                    sys.exit(2)
-                except KeyboardInterrupt:
-                    logger.info("Exiting...")
-                    sys.exit(1)
-                except:
-                    traceback.print_exc()
-                    bot.disconnect()
-        except OSError, e:
-            logger.error("Daemon started failed: %d (%s)", e.errno, e.strerror)
-            os.exit(1)
-    else:
+
+    while True:
         bot = BotChat()
-        bot.run()
-
-
+        try:
+            bot.run()
+        except pyxmpp2.exceptions.SASLAuthenticationFailed:
+            print >>sys.stderr, 'Username or Password Error!!!'
+            sys.exit(2)
+        except KeyboardInterrupt:
+            print >>sys.stderr, "Exiting..."
+            sys.exit(1)
+        except:
+            traceback.print_exc()
+        finally:
+            bot.disconnect()
 
 if __name__ == '__main__':
-    logger = get_logger()
-    import argparse
-    parser = argparse.ArgumentParser(description = "Pythoner Club group bot")
-    parser.add_argument('--restart', action = 'store_const', dest = 'action',
-                        const  = 'restart', default='run',
-                        help = 'Restart the bot')
-    parser.add_argument('--stop', action = 'store_const', dest = 'action',
-                        const = 'stop', default='run',
-                        help = 'Stop the bot')
-    args = parser.parse_args()
-    if args.action == 'run': main()
-    elif args.action == 'restart':
-        try:
-            logger.info('Restart...')
-            PID = int(open(PIDPATH, 'r').read())
-            os.kill(PID, 9)
-        except Exception, e:
-            logger.error('Restart failed %s: %s', e.errno, e.strerror)
-            logger.info("Try start...")
-            main()
-            logger.info("done")
-    elif args.action == 'stop':
-        try:
-            logger.info("Stop the bot")
-            PID = int(open(PIDPATH, 'r').read())
-            os.kill(PID -1, 9)
-            os.kill(PID, 9)
-        except Exception, e:
-            logger.error("Stop failed line:%d error:%s", e.errno, e.strerror)
+    main()
