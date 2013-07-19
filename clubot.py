@@ -18,7 +18,7 @@
 from __future__ import absolute_import
 
 import logging
-import sys
+import sys, os
 import traceback
 
 import pyxmpp2
@@ -223,19 +223,24 @@ def main():
         sys.exit(2)
 
     while True:
-        bot = BotChat()
-        try:
-            bot.run()
-        except pyxmpp2.exceptions.SASLAuthenticationFailed:
-            print >>sys.stderr, 'Username or Password Error!!!'
-            sys.exit(2)
-        except KeyboardInterrupt:
-            print >>sys.stderr, "Exiting..."
-            sys.exit(1)
-        except:
-            traceback.print_exc()
-        finally:
-            bot.disconnect()
+        pid = os.fork()
+        if pid > 0:
+            os.waitpid(pid, 0)
+            os.execv(sys.executable, [sys.executable] + sys.argv)
+        else:
+            bot = BotChat()
+            try:
+                bot.run()
+            except pyxmpp2.exceptions.SASLAuthenticationFailed:
+                print >>sys.stderr, 'Username or Password Error!!!'
+                sys.exit(2)
+            except KeyboardInterrupt:
+                print >>sys.stderr, "Exiting..."
+                sys.exit(1)
+            except:
+                traceback.print_exc()
+            finally:
+                bot.disconnect()
 
 if __name__ == '__main__':
     main()
