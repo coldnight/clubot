@@ -72,17 +72,7 @@ class BotChat(EventHandler, XMPPFeatureHandler):
         self.client.run(timeout)
 
     def disconnect(self):
-        try:
-            self.client.disconnect()
-        except:
-            pass
-        while True:
-            try:
-                self.run(2)
-            except:
-                pass
-            else:
-                break
+        self.client.disconnect()
 
     @presence_stanza_handler("subscribe")
     def handle_presence_subscribe(self, stanza):
@@ -222,25 +212,26 @@ def main():
         print >>sys.stderr, 'Please write the password in the settings.py'
         sys.exit(2)
 
-    while True:
-        pid = os.fork()
-        if pid > 0:
-            os.waitpid(pid, 0)
+    bot = BotChat()
+    retry = True
+    try:
+        bot.run()
+    except pyxmpp2.exceptions.SASLAuthenticationFailed:
+        print >>sys.stderr, 'Username or Password Error!!!'
+        retry = False
+        sys.exit(-1)
+    except KeyboardInterrupt:
+        retry = False
+        print >>sys.stderr, "Exiting..."
+        sys.exit(-2)
+    except:
+        retry = True
+        traceback.print_exc()
+    finally:
+        bot.disconnect()
+        if retry:
             os.execv(sys.executable, [sys.executable] + sys.argv)
-        else:
-            bot = BotChat()
-            try:
-                bot.run()
-            except pyxmpp2.exceptions.SASLAuthenticationFailed:
-                print >>sys.stderr, 'Username or Password Error!!!'
-                sys.exit(2)
-            except KeyboardInterrupt:
-                print >>sys.stderr, "Exiting..."
-                sys.exit(1)
-            except:
-                traceback.print_exc()
-            finally:
-                bot.disconnect()
+
 
 if __name__ == '__main__':
     main()
