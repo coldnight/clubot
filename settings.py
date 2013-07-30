@@ -12,6 +12,7 @@ PASSWORD = ''
 
 DEBUG = True
 IMPORT = False # 如果数据库中有而角色中无则添加好友
+TRACE = False
 
 PIDPATH = r'clubot.pid'
 LOGPATH = r'clubot.log'

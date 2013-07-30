@@ -37,7 +37,7 @@ from logics import Logics
 from message import MessageBus
 from mtornado import TornadoMainLoop
 from utility import welcome, new_member, get_logger
-from settings import USER, PASSWORD, STATUS, IMPORT
+from settings import USER, PASSWORD, STATUS, IMPORT, TRACE
 
 __version__ = '0.5.0 alpha'
 
@@ -211,6 +211,15 @@ def main():
     if not PASSWORD:
         print >>sys.stderr, 'Please write the password in the settings.py'
         sys.exit(2)
+
+    if TRACE:
+        handler = logging.StreamHandler()
+        handler.setLevel(logging.DEBUG)
+        for logger in ("pyxmpp2.IN", "pyxmpp2.OUT"):
+            logger = logging.getLogger(logger)
+            logger.setLevel(logging.DEBUG)
+            logger.addHandler(handler)
+            logger.propagate = False
 
     bot = BotChat()
     retry = True
