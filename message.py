@@ -148,7 +148,8 @@ class MessageBus(object):
                 self.logger.info("{0} send message {1} to {2!r}"
                                     .format(stanza.from_jid, body, members))
                 Logics.add_history(stanza.from_jid, 'all', body)
-                [self.send_message(stanza, m, body) for m in members]
+                [self.send_message(stanza, m, "[{0}] {1}".format(nick, body))
+                 for m in members]
 
             back = partial(long_back, body)
             self.handle_code(stanza, "```\n" + body, nick, back)
