@@ -107,7 +107,7 @@ class MessageBus(object):
         if body.startswith("```"):
             bodys = body.split("\n")
             typ = bodys[0].strip("`").strip()
-            typ = typ if typ else "text"
+            typ = typ if typ else ""
             codes = "\n".join(bodys[1:]).strip("```")
             self.cmd_handler._paste(stanza, typ, codes, nick, back)
 

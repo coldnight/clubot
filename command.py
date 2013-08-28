@@ -346,16 +346,11 @@ class CommandHandler(BaseHandler):
             nick    昵称
             callback    回调
         """
-        param = {'class':typ}
-        param.update(poster=stanza.from_jid.bare(), code = code)
-        url = "http://paste.linuxzen.com"
+        param = {'vimcn':code.encode("utf-8")}
+        url = "http://p.vim-cn.com/"
         def __paste(resp):
-            if resp.code == 302:
-                nurl = resp.headers.get("Location")
-            else:
-                nurl = resp.url
-            if nurl != url:
-                callback("{0} {1}".format(nick, nurl))
+            nurl = resp.body.strip().rstrip("/") + "/" + typ
+            callback("{0} {1}".format(nick, nurl))
 
         self._http_stream.post(url, param, callback = __paste)
 
