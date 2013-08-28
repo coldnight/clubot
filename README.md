@@ -15,10 +15,8 @@ python clubot.py      # 运行
 ```
 
 ## 更新内容
-1. 使用`SQLAlchemy`重写数据库和逻辑部分
-2. 清除不常用的命令
-3. 将`history`命令改为`old`, 并对其增强
-4. 将`mainloop`改为仙子的`tornado`MainLoop
+* 使用MongoDB作为数据库
+* 使用`tornadohttpclient`替换`http_stream`
 
 ## 更新到新版本
 新版本对数据库做了较大的改动,  可以使用`update.py`脚本导入老数据
@@ -47,3 +45,7 @@ python clubot.py      # 运行
 
 ### 2013-07-30
 * 增加`TRACE`选项
+
+### 2013-08-28
+* 使用MongoDB作为数据库
+* 使用`tornadohttpclient`替换`http_stream`

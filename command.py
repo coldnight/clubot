@@ -44,12 +44,12 @@ from functools import partial
 from dns import query
 
 from pyxmpp2.jid import JID
+from tornadohttpclient import TornadoHTTPClient
 
 from logics import Logics
 from settings import  LOGPATH, STATUS, MODES, ADMINS, USER
-from utility import  get_logger, get_email, roll, cityid
+from utility import  get_logger, get_email, roll, cityid, nicetime
 
-from http_stream import HTTPStream
 from settings import YOUDAO_KEY, YOUDAO_KEYFROM
 
 
@@ -64,7 +64,7 @@ class BaseHandler(object):
     def __init__(self, message_bus):
         self._message_bus = message_bus   # 消息总线
         self._logger = get_logger()       # 日志
-        self._http_stream = HTTPStream.instance()
+        self._http_stream = TornadoHTTPClient()
 
     def _send_cmd_result(self, stanza, body):
         """返回命令结果"""
@@ -205,7 +205,7 @@ class CommandHandler(BaseHandler):
             self._send_cmd_result(stanza, body)
             self._message_bus.send_all_msg(stanza, body)
 
-        self._http_stream.get(url, readback = readback)
+        self._http_stream.get(url, callback = readback)
 
 
     def r(self,stanza,*args):
@@ -228,8 +228,7 @@ class CommandHandler(BaseHandler):
             t = random.randrange(1, 10)
             rps = [random.randrange(0, 100) for i in xrange(0, t)]
             rp = rps[random.randrange(0, len(rps) -1)] if len(rps) > 1 else rps[0]
-            Logics.set_info(frm, "rp", rp)
-            Logics.set_info(frm, "rp_date", time.time())
+            Logics.set_today_rp(frm, rp)
             body = ">>>{0} 进行了今日人品检测,人品值为 {1}".format(nick, rp)
             self._message_bus.send_sys_msg(stanza, body)
         else:
@@ -280,10 +279,10 @@ class CommandHandler(BaseHandler):
         bodys.append(u"资源: {0}     权限: {1}".format(resource, level))
         bodys.append(u"今日人品: {0}".format(rp))
         bodys.append(u"发言次数: {0}".format(say_times))
-        bodys.append(u"最后发言: {0}".format(last_say))
-        bodys.append(u"加入时间: {0}".format(m.join_date))
+        bodys.append(u"最后发言: {0}".format(nicetime(last_say)))
+        bodys.append(u"加入时间: {0}".format(nicetime(m.join_date)))
         bodys.append(u"更改昵称次数: {0}".format(change_times))
-        bodys.append(u"上次更改时间: {0}".format(last_change))
+        bodys.append(u"上次更改时间: {0}".format(nicetime(last_change)))
         bodys.append(u"是否接受消息: {0}".format(is_rece))
         self._send_cmd_result(stanza, "\n".join(bodys))
 
@@ -335,7 +334,7 @@ class CommandHandler(BaseHandler):
                 self._message_bus.send_sys_msg(stanza, u"{0} {1}"
                                                .format(nick, result))
 
-        self._http_stream.get(url, params, readback = read_shell)
+        self._http_stream.get(url, params, callback = read_shell)
 
 
     def _paste(self, stanza, typ, code, nick, callback):
@@ -358,7 +357,7 @@ class CommandHandler(BaseHandler):
             if nurl != url:
                 callback("{0} {1}".format(nick, nurl))
 
-        self._http_stream.post(url, param, readback = __paste)
+        self._http_stream.post(url, param, callback = __paste)
 
 
     def dns(self, stanza, *args):
@@ -407,9 +406,9 @@ class CommandHandler(BaseHandler):
         histories = Logics.get_history(**kwargs)
         bodys = [header]
         for history in histories:
-            bodys.append(u"{0} [{1}] {2}".format(history.pubdate,
-                                                 history.member.nick,
-                                                 history.content))
+            bodys.append(u"{0} [{1}] {2}".format(nicetime(history.get("pubdate")),
+                                                 history.get("from_member", {}).get("nick"),
+                                                 history.get("content")))
 
         self._send_cmd_result(stanza, "\n".join(bodys))
 
@@ -479,7 +478,7 @@ class CommandHandler(BaseHandler):
                 body = u"没有结果"
             self._send_cmd_result(stanza, body)
 
-        self._http_stream.get(url, params, readback =read_back)
+        self._http_stream.get(url, params, callback =read_back)
 
 
 class AdminCMDHandler(CommandHandler):

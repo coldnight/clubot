@@ -1,4 +1,6 @@
 pyxmpp2
-sqlalchemy
 tornado
+tornadohttpclient
+pymongo
 MySQL-python
+sqlalchemy

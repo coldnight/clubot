@@ -52,7 +52,37 @@ def get_email(frm):
         result = frm
     return result
 
+def tiptime(date):
+    """ 获取一个友好的时间, 比如: 2小时前, 刚刚等 """
+    timedelta = now() - date
+    if timedelta.days:
+        if timedelta.days < 7:
+            return u"{0} 天前".format(timedelta.days)
+        elif 30 > timedelta.days > 7:
+            return u"{0} 星期前".format(int(timedelta.days / 7))
+        elif 360 > timedelta.days > 30:
+            return u"{0} 月前".format(int(timedelta.days / 30))
+        elif timedelta.days > 360:
+            return u"{0} 年前".format(int(timedelta.days / 360))
+    else:
+        if timedelta.seconds < 60:
+            return u"刚刚"
+        elif 3600 > timedelta.seconds > 60:
+            return u"{0} 分钟前".format(int(timedelta.seconds / 60 ))
+        elif 86400 > timedelta.seconds > 3600:
+            return u"{0} 小时前".format(int(timedelta.seconds / 3600))
 
+def nicetime(date):
+    if not isinstance(date, datetime):
+        try:
+            date = datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
+        except:
+            return date
+    timedelta = now() - date
+    if timedelta.days:
+        return date.strftime("%y-%m-%d %H:%M:%S")
+    else:
+        return date.strftime("%H:%M:%S")
 
 
 def strGetLastNumber(szExp):
