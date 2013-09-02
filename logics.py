@@ -333,7 +333,7 @@ class Logics(object):
 
     @classmethod
     def is_online(cls, jid):
-        m = cls.get_one(jid)
+        m = cls.get_one(jid, status = True)
         return bool([status.status for status in m.status if status.status])
 
 
