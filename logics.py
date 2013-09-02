@@ -179,7 +179,7 @@ class Logics(object):
     @classmethod
     def set_offline(cls, jid):
         status, m = cls.get_one_status(jid)
-        if not m: return False
+        if not m or not status: return False
         cls.db[const.STATUS].remove({"_id":status.get("_id")})
 
 
