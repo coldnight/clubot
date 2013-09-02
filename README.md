@@ -19,11 +19,15 @@ python clubot.py      # 运行
 
 ## 从MySQL版更新到MongoDB版
 首先切换到`mongodb-ver`分支然后`pull`
-    git checkout -b mongodb-ver
-    git pull origin mongodb-ver
+```
+git checkout -b mongodb-ver
+git pull origin mongodb-ver
+```
 
 然后在settings.py中填入数据库配置, 执行update.py脚本对数据进行迁移
-    python update.py
+```
+python update.py
+```
 
 然后切回住版本, 安装新的依赖运行即可
 
