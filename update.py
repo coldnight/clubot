@@ -17,7 +17,7 @@ def mysql2mongo():
     members = session.query(Member)
     for m in members:
         mid = db[const.MEMBER].insert({"email":m.email, "nick":m.nick,
-                                       "lasy_say":m.last_say,
+                                       "last_say":m.last_say,
                                        "last_change":m.last_change,
                                        "isonline":bool(m.isonline),
                                        "join_date":m.join_date})
