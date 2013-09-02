@@ -144,7 +144,7 @@ class CommandHandler(BaseHandler):
         """列出成员"""
         frm = stanza.from_jid
         femail = get_email(frm)
-        members = Logics.get_members()
+        members = Logics.get_members(status = True)
         onlines = []
         offlines = []
         for m in members:
@@ -257,7 +257,8 @@ class CommandHandler(BaseHandler):
     def whois(self, stanza, *args):
         """ 查询用户信息 """
         nick = ' '.join(args[0:])
-        m = Logics.get_with_nick(nick)
+        m = Logics.get_with_nick(nick, status = True, infos = True,
+                                 history = True)
         if not m:
             self._send_cmd_result(stanza, u"{0} 用户不存在".format(nick))
             return
