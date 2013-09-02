@@ -340,3 +340,52 @@ class Logics(object):
     @classmethod
     def empty_status(cls):
         cls.db[const.STATUS].remove()
+
+
+    @classmethod
+    def get_all_rps(cls, starttime = None, endtime = None):
+        condition = {"key":const.INFO_RP}
+        if starttime or endtime:
+            condition["pubdate"] = {}
+
+            if starttime:
+                condition["pubdate"].update({"$gt":starttime})
+
+            if endtime:
+                condition["pubdate"].update({"$lte":endtime})
+
+        return list(cls.db[const.INFO].find(condition))
+
+
+    @classmethod
+    def get_today_rps(cls):
+        now = now()
+        starttime = datetime(now.year, now.month, now.day)
+        endtime = datetime(now.year, now.month, now.day, 23, 59, 59)
+        return sorted(cls.get_all_rps(starttime, endtime), key = lambda x:x["value"])
+
+
+    @classmethod
+    def add_honor(cls, jid, value, typ, item, desc):
+        m = cls.get_with_nick(jid)
+
+        doc = {"getdate":now(), "date":now(), "type":typ, "desc":desc,
+               "mid":m._id, "item":item, "value":value}
+        cls.db[const.HONOR].insert(doc)
+
+    @classmethod
+    def get_honor(cls, m):
+        honors = cls.db[const.HONOR].find({"mid":m._id})
+        return list(honors)
+
+    @classmethod
+    def get_honor_str(cls, m):
+        honors = cls.get_honor(m)
+        body = u""
+        for h in honors:
+            date = h.get("date").strftime("%Y/%m/%d")
+            body += u"{0} {1}为{2}达到{3}, 获得成就"\
+                    .format(date, h.get("item"), h.get("value"),
+                            h.get("desc"))
+
+        return body
