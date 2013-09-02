@@ -14,16 +14,28 @@ pip install -r dev_requirements.txt
 python clubot.py      # 运行
 ```
 
-## 更新内容
+## 更新到新版本
+版本更新到`MongoDB`版本, 之前的`MySQL`版本不再更新, 可以从`mysql-ver`分支获取`MySQL`版本,
+
+## 从MySQL版更新到MongoDB版
+首先切换到`mongodb-ver`分支然后`pull`
+    git checkout -b mongodb-ver
+    git pull origin mongodb-ver
+
+然后在settings.py中填入数据库配置, 执行update.py脚本对数据进行迁移
+    python update.py
+
+然后切回住版本, 安装新的依赖运行即可
+
+## 我们的群bot
+欢迎加入`clubot@vim-cn.com`讨论
+
+## 更新
+### 最新更新
 * 使用MongoDB作为数据库
 * 使用`tornadohttpclient`替换`http_stream`
 
-## 更新到新版本
-新版本对数据库做了较大的改动,  可以使用`update.py`脚本导入老数据
 
-欢迎加入clubot@vim-cn.com讨论(gtalk 会出现丢消息的状况, jabber.org更是偶尔的不投递消息,甚至是两三天,所以换到vim-cn.com)
-
-## 更新
 ### 2013-05-24
 * 加入Python shell功能, 可以为每个成员分配一个session来保存语句上下文
 
