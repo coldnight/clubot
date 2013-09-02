@@ -51,6 +51,7 @@ from settings import  LOGPATH, STATUS, MODES, ADMINS, USER
 from utility import  get_logger, get_email, roll, cityid, nicetime
 
 from settings import YOUDAO_KEY, YOUDAO_KEYFROM
+from honor import Honor
 
 
 class BaseHandler(object):
@@ -65,6 +66,7 @@ class BaseHandler(object):
         self._message_bus = message_bus   # 消息总线
         self._logger = get_logger()       # 日志
         self._http_stream = TornadoHTTPClient()
+        self._honor = Honor()
 
     def _send_cmd_result(self, stanza, body):
         """返回命令结果"""
@@ -144,7 +146,7 @@ class CommandHandler(BaseHandler):
         """列出成员"""
         frm = stanza.from_jid
         femail = get_email(frm)
-        members = Logics.get_members()
+        members = Logics.get_members(status = True)
         onlines = []
         offlines = []
         for m in members:
@@ -231,6 +233,7 @@ class CommandHandler(BaseHandler):
             Logics.set_today_rp(frm, rp)
             body = ">>>{0} 进行了今日人品检测,人品值为 {1}".format(nick, rp)
             self._message_bus.send_sys_msg(stanza, body)
+            self._honor.rp_honor(nick, rp, partial(self._message_bus.send_sys_msg, stanza))
         else:
             body = "你已经检测过了今天的人品,人品值为 {0}".format(rp)
             self._send_cmd_result(stanza, body)
@@ -257,7 +260,8 @@ class CommandHandler(BaseHandler):
     def whois(self, stanza, *args):
         """ 查询用户信息 """
         nick = ' '.join(args[0:])
-        m = Logics.get_with_nick(nick)
+        m = Logics.get_with_nick(nick, status = True, infos = True,
+                                 history = True)
         if not m:
             self._send_cmd_result(stanza, u"{0} 用户不存在".format(nick))
             return
@@ -284,6 +288,10 @@ class CommandHandler(BaseHandler):
         bodys.append(u"更改昵称次数: {0}".format(change_times))
         bodys.append(u"上次更改时间: {0}".format(nicetime(last_change)))
         bodys.append(u"是否接受消息: {0}".format(is_rece))
+        honor = Logics.get_honor_str(m)
+        if honor:
+            bodys.append(u"成就:")
+            bodys.append(honor)
         self._send_cmd_result(stanza, "\n".join(bodys))
 
 

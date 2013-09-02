@@ -6,6 +6,7 @@
 #   Date    :   12/12/21 15:58:35
 #   Desc    :   工具类函数
 #
+import time
 import random
 import logging
 from datetime import datetime
@@ -78,12 +79,19 @@ def nicetime(date):
             date = datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
         except:
             return date
-    timedelta = now() - date
-    if timedelta.days:
-        return date.strftime("%y-%m-%d %H:%M:%S")
-    else:
+    now = datetime.now()
+    timedelta = now - date
+
+    if not timedelta.days and now.day == date.day:
         return date.strftime("%H:%M:%S")
 
+    if not timedelta.days and now.day != date.day:
+        return "昨天 " + date.strftime("%H:%M:%S")
+
+    if timedelta.days == 1 and now.day != date.day:
+        return "前天 " + date.strftime("%H:%M:%S")
+
+    return date.strftime("%y/%m/%d %H:%M:%S")
 
 def strGetLastNumber(szExp):
     szExp=" " + szExp.strip()

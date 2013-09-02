@@ -10,6 +10,7 @@ MEMBER = "members"
 INFO = "infos"
 HISTORY = "history"
 STATUS = "status"
+HONOR = "honors"
 
 
 ONLINE = 1

@@ -35,41 +35,56 @@ class Logics(object):
 
 
     @classmethod
-    def wrap_member(cls, m):
+    def wrap_member(cls, m, status = False, history = False, infos = False):
+        """ 装饰成员, 将成员换成AttrDict
+        Arguments:
+            `m`         -   成员
+            `status`    -   是否装载状态
+            `history`   -   是否装载消息历史
+            `infos`     -   是否装载信息
+        """
         if isinstance(m, (list, tuple)):
             lst = []
             for i in m:
-                lst.append(cls.wrap_member(i))
+                lst.append(cls.wrap_member(i, status = status, history = history,
+                                           infos = infos))
             return lst
         elif isinstance(m, dict):
             m = AttrDict(m)
-            m["infos"] = cls.wrap_dict(list(cls.db[const.INFO].find({"mid":m._id})))
-            m["history"] = cls.wrap_dict(list(cls.db[const.HISTORY].find({"from_member.$id":m._id})))
-            m["status"] = cls.wrap_dict(list(cls.db[const.STATUS].find({"mid":m._id})))
+            if infos:
+                m["infos"] = cls.wrap_dict(list(cls.db[const.INFO].find({"mid":m._id})))
+
+            if history:
+                m["history"] = cls.wrap_dict(list(cls.db[const.HISTORY].find({"from_member.$id":m._id})))
+
+            if status:
+                m["status"] = cls.wrap_dict(list(cls.db[const.STATUS].find({"mid":m._id})))
+
             return m
         else:
             return m
 
 
     @classmethod
-    def get_with_nick(cls, nick):
+    def get_with_nick(cls, nick, **kwargs):
         """ 根据昵称获取成员
         Arguments:
             `nick`  -   成员昵称
         """
 
         m = cls.db[const.MEMBER].find_one({"nick":nick})
-        return cls.wrap_member(m)
+        return cls.wrap_member(m, **kwargs)
 
 
     @classmethod
-    def get_one(cls, jid):
+    def get_one(cls, jid, **kwargs):
         """ 获取一个成员
         Arguments:
             `jid`   -   成员jid
         """
         email = get_email(jid)
-        return cls.wrap_member(cls.db[const.MEMBER].find_one({"email":email}))
+        return cls.wrap_member(cls.db[const.MEMBER].find_one({"email":email}),
+                               **kwargs)
 
 
     @classmethod
@@ -107,7 +122,7 @@ class Logics(object):
         return
 
     @classmethod
-    def get_members(cls, remove = None):
+    def get_members(cls, remove = None, **kwargs):
         """ 获取所有成员
         Arguments:
             `remove`    -   排除成员
@@ -115,9 +130,9 @@ class Logics(object):
         remove_email = get_email(remove)
         if remove:
             ms = cls.db[const.MEMBER].find({"email":{"$ne":remove_email}})
-            return cls.wrap_member(list(ms))
+            return cls.wrap_member(list(ms), **kwargs)
         ms = cls.db[const.MEMBER].find()
-        return cls.wrap_member(list(ms))
+        return cls.wrap_member(list(ms), **kwargs)
 
 
     @classmethod
@@ -179,7 +194,7 @@ class Logics(object):
     @classmethod
     def set_offline(cls, jid):
         status, m = cls.get_one_status(jid)
-        if not m: return False
+        if not m or not status: return False
         cls.db[const.STATUS].remove({"_id":status.get("_id")})
 
 
@@ -318,10 +333,59 @@ class Logics(object):
 
     @classmethod
     def is_online(cls, jid):
-        m = cls.get_one(jid)
+        m = cls.get_one(jid, status = True)
         return bool([status.status for status in m.status if status.status])
 
 
     @classmethod
     def empty_status(cls):
         cls.db[const.STATUS].remove()
+
+
+    @classmethod
+    def get_all_rps(cls, starttime = None, endtime = None):
+        condition = {"key":const.INFO_RP}
+        if starttime or endtime:
+            condition["pubdate"] = {}
+
+            if starttime:
+                condition["pubdate"].update({"$gt":starttime})
+
+            if endtime:
+                condition["pubdate"].update({"$lte":endtime})
+
+        return list(cls.db[const.INFO].find(condition))
+
+
+    @classmethod
+    def get_today_rps(cls):
+        now = now()
+        starttime = datetime(now.year, now.month, now.day)
+        endtime = datetime(now.year, now.month, now.day, 23, 59, 59)
+        return sorted(cls.get_all_rps(starttime, endtime), key = lambda x:x["value"])
+
+
+    @classmethod
+    def add_honor(cls, jid, value, typ, item, desc):
+        m = cls.get_with_nick(jid)
+
+        doc = {"getdate":now(), "date":now(), "type":typ, "desc":desc,
+               "mid":m._id, "item":item, "value":value}
+        cls.db[const.HONOR].insert(doc)
+
+    @classmethod
+    def get_honor(cls, m):
+        honors = cls.db[const.HONOR].find({"mid":m._id})
+        return list(honors)
+
+    @classmethod
+    def get_honor_str(cls, m):
+        honors = cls.get_honor(m)
+        body = u""
+        for h in honors:
+            date = h.get("date").strftime("%Y/%m/%d")
+            body += u"{0} {1}为{2}达到{3}, 获得成就"\
+                    .format(date, h.get("item"), h.get("value"),
+                            h.get("desc"))
+
+        return body
