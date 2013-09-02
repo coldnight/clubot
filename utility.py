@@ -84,11 +84,10 @@ def nicetime(date):
 
     if not timedelta.days and now.day == date.day:
         return date.strftime("%H:%M:%S")
-
-    if timedelta.days == 1 and now.day != date.day:
+    else:
         return "昨天 " + date.strftime("%H:%M:%S")
 
-    if timedelta.days == 2 and now.day != date.day:
+    if timedelta.days == 1 and now.day != date.day:
         return "前天 " + date.strftime("%H:%M:%S")
 
     return date.strftime("%y/%m/%d %H:%M:%S")
