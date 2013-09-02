@@ -84,7 +84,8 @@ def nicetime(date):
 
     if not timedelta.days and now.day == date.day:
         return date.strftime("%H:%M:%S")
-    else:
+
+    if not timedelta.days and now.day != date.day:
         return "昨天 " + date.strftime("%H:%M:%S")
 
     if timedelta.days == 1 and now.day != date.day:
