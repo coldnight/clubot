@@ -14,7 +14,7 @@ from pyxmpp2.message import Message
 from pyxmpp2.presence import Presence
 
 from logics import Logics
-from utility import NOW, get_email, get_logger, cityid
+from utility import NOW, get_email, get_logger, cityid, nicetime
 from command import CommandHandler, AdminCMDHandler
 
 from settings import ADMINS, MODES, USER
@@ -95,7 +95,16 @@ class MessageBus(object):
         frm = stanza.from_jid
         offline_message = Logics.get_info(frm, 'offline_message', '').value
         if offline_message:
-            off_msgs = offline_message.split(self.offline_split_symbol)
+            temp_msgs = offline_message.split(self.offline_split_symbol)
+            off_msgs = []
+
+            for m in temp_msgs:
+                ms = m.split(" ")
+                date = " ".join(ms[:2])
+                msg = " ".join(ms[2:])
+                date = nicetime(date)
+                off_msgs.append(date + " " + msg)
+
             offline_message = "\n".join(off_msgs)
             offline_message = "离线期间的消息:\n" + offline_message
             if len(off_msgs) == 10:

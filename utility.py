@@ -83,15 +83,15 @@ def nicetime(date):
     timedelta = now - date
 
     if not timedelta.days and now.day == date.day:
-        return date.strftime("%H:%M:%S")
+        return date.strftime("%H:%M")
 
     if not timedelta.days and now.day != date.day:
-        return "昨天 " + date.strftime("%H:%M:%S")
+        return "昨天 " + date.strftime("%H:%M")
 
     if timedelta.days == 1 and now.day != date.day:
-        return "前天 " + date.strftime("%H:%M:%S")
+        return "前天 " + date.strftime("%H:%M")
 
-    return date.strftime("%y/%m/%d %H:%M:%S")
+    return date.strftime("%y/%m/%d %H:%M")
 
 def strGetLastNumber(szExp):
     szExp=" " + szExp.strip()
