@@ -155,8 +155,14 @@ class CommandHandler(BaseHandler):
             status = m.status
             isonline = bool([status.status for status in m.status
                          if status.status])
-            status_text = " ".join(status.statustext for status in m.status
-                                    if status.statustext)
+            status_text = ""
+            status = [status.statustext for status in m.status if status.statustext]
+            if "away" in status:
+                status_text = "「离开」"
+
+            if "dnd" in status:
+                status_text = "「忙碌」"
+
             if m.email == femail:
                 onlines.append("** {0}".format(m.nick))
             elif m.email != femail and isonline:
@@ -266,9 +272,17 @@ class CommandHandler(BaseHandler):
             self._send_cmd_result(stanza, u"{0} 用户不存在".format(nick))
             return
         bodys = []
+        sts = [status.statustext for status in m.status if status.statustext]
+        status_text = u""
+        if "away" in sts:
+            status_text = u"「离开」"
+
+        if "dnd" in sts:
+            status_text = u"「忙碌」"
+
         isonline = bool([status.status for status in m.status
                         if status.status])
-        status = u"在线" if isonline else u"离线"
+        status = u"在线"+status_text if isonline else u"离线"
         resource = " ".join(s.resource for s in m.status if s.resource)
         rp = Logics.get_today_rp(m.email)
         rp = rp if rp else u"尚未测试"
