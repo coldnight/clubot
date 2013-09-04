@@ -30,6 +30,10 @@ python update.py
 ```
 
 然后切回住版本, 安装新的依赖运行即可
+```
+git checkout master
+pip install -r dev_requirements.txt
+```
 
 ## 我们的群bot
 欢迎加入`clubot@vim-cn.com`讨论
