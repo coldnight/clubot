@@ -98,6 +98,8 @@ class MessageBus(object):
             off_msgs = offline_message.split(self.offline_split_symbol)
             offline_message = "\n".join(off_msgs)
             offline_message = "离线期间的消息:\n" + offline_message
+            if len(off_msgs) == 10:
+                offline_message += "\n(仅显示最近10条, 更多历史消息请使用 -old 查看)"
             m = self.make_message(frm, 'chat', offline_message)
             self._stream.send(m)
             Logics.set_online(frm, show)
