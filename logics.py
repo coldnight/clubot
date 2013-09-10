@@ -97,6 +97,8 @@ class Logics(object):
         """
         if cls.get_one(jid):
             return
+        if not nick:
+            nick = get_email(jid).split("@")[0]
         doc = {"email":get_email(jid), "nick":nick, "isonline":True,
                "join_date":now()}
         mid = cls.db[const.MEMBER].insert(doc)
@@ -104,7 +106,7 @@ class Logics(object):
                                      "resource" : jid.resource,
                                      "status":const.ONLINE})
 
-        return cls.get_one(cls, jid)
+        return cls.get_one(jid)
 
 
 
@@ -115,7 +117,7 @@ class Logics(object):
             `jid`   -   成员jid
         """
         m = cls.get_one(jid)
-        cls.db[const.MEMBER].remove({"email":get_email})
+        cls.db[const.MEMBER].remove({"email":get_email(jid)})
         cls.db[const.STATUS].remove({"mid":m._id})
         cls.db[const.INFO].remove({"mid":m._id})
 
