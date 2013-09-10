@@ -120,9 +120,9 @@ class Logics(object):
         """
         m = cls.get_one(jid)
         try:
+            cls.db[const.MEMBER].remove({"email":get_email(jid)})
             cls.db[const.STATUS].remove({"mid":m._id})
             cls.db[const.INFO].remove({"mid":m._id})
-            cls.db[const.MEMBER].remove({"email":get_email(jid)})
         except:
             traceback.print_exc()
 
