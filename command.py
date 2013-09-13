@@ -285,7 +285,7 @@ class CommandHandler(BaseHandler):
         status = u"在线"+status_text if isonline else u"离线"
         resource = " ".join(s.resource for s in m.status if s.resource)
         rp = Logics.get_today_rp(m.email)
-        rp = rp if rp else u"尚未测试"
+        rp = rp if rp != None else u"尚未测试"
         say_times = 0 if not m.history else len(m.history)
         level = u"管理员" if m.email in ADMINS else u"成员"
         last_say = u"从未发言" if not m.last_say else m.last_say
