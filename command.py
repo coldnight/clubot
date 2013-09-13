@@ -232,7 +232,7 @@ class CommandHandler(BaseHandler):
         frm = stanza.from_jid
         nick = Logics.get_one(frm).nick
         rp = Logics.get_today_rp(frm)
-        if not rp:
+        if rp == None:
             t = random.randrange(1, 10)
             rps = [random.randrange(0, 100) for i in xrange(0, t)]
             rp = rps[random.randrange(0, len(rps) -1)] if len(rps) > 1 else rps[0]
