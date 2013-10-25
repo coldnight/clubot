@@ -218,9 +218,9 @@ class MessageBus(object):
         self._stream.send(p1)
 
     def send_unsubscribe(self, jid):
-        p1 = Presence(from_jid = self.my_jid, to_jid = jid,
+        p1 = Presence(from_jid = self.bot_jid, to_jid = jid,
                       stanza_type = 'unsubscribe')
-        p = Presence(from_jid = self.my_jid, to_jid = jid,
+        p = Presence(from_jid = self.bot_jid, to_jid = jid,
                      stanza_type = 'unsubscribed')
         self._stream.send(p)
         self._stream.send(p1)
