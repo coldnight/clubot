@@ -204,7 +204,7 @@ class CommandHandler(BaseHandler):
         key = cityid(body.encode('utf-8'))
         url = 'http://www.weather.com.cn/data/cityinfo/' + key + ".html"
         def readback(resp):
-            load = json.loads(resp.read())
+            load = json.loads(resp.body)
             body = 'city:%s, Weather %s, %s ~ %s' %\
                     (load['weatherinfo']['city'],
                      load['weatherinfo']['weather'],
@@ -342,7 +342,7 @@ class CommandHandler(BaseHandler):
 
 
         def read_shell(resp):
-            result = resp.read()
+            result = resp.body
             nick = Logics.get_one(stanza.from_jid).nick
             if not result:
                 nick = "{0}:[OK]".format(nick)
@@ -445,7 +445,7 @@ class CommandHandler(BaseHandler):
                   ("doctype", "json"), ("version",1.1), ("q", source)]
 
         def read_back(resp):
-            source = resp.read()
+            source = resp.body
             body = None
             try:
                 buf = StringIO(source)
