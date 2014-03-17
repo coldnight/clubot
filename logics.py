@@ -15,9 +15,11 @@ from datetime import datetime
 
 from utility import get_email, now
 
+
 class AttrDict(dict):
+
     def __getattr__(self, key):
-        return self[key]
+        return self.get(key, None)
 
 
 class Logics(object):
@@ -25,7 +27,7 @@ class Logics(object):
 
     @classmethod
     def wrap_dict(cls, data):
-        if isinstance(data, (list,tuple)):
+        if isinstance(data, (list, tuple)):
             lst = []
             for i in data:
                 lst.append(cls.wrap_dict(i))
@@ -35,9 +37,8 @@ class Logics(object):
         else:
             return data
 
-
     @classmethod
-    def wrap_member(cls, m, status = False, history = False, infos = False):
+    def wrap_member(cls, m, status=False, history=False, infos=False):
         """ 装饰成员, 将成员换成AttrDict
         Arguments:
             `m`         -   成员
@@ -48,24 +49,27 @@ class Logics(object):
         if isinstance(m, (list, tuple)):
             lst = []
             for i in m:
-                lst.append(cls.wrap_member(i, status = status, history = history,
-                                           infos = infos))
+                lst.append(
+                    cls.wrap_member(i, status=status, history=history,
+                                    infos=infos))
             return lst
         elif isinstance(m, dict):
             m = AttrDict(m)
             if infos:
-                m["infos"] = cls.wrap_dict(list(cls.db[const.INFO].find({"mid":m._id})))
+                m["infos"] = cls.wrap_dict(
+                    list(cls.db[const.INFO].find({"mid": m._id})))
 
             if history:
-                m["history"] = cls.wrap_dict(list(cls.db[const.HISTORY].find({"from_member.$id":m._id})))
+                m["history"] = cls.wrap_dict(
+                    list(cls.db[const.HISTORY].find({"from_member.$id": m._id})))
 
             if status:
-                m["status"] = cls.wrap_dict(list(cls.db[const.STATUS].find({"mid":m._id})))
+                m["status"] = cls.wrap_dict(
+                    list(cls.db[const.STATUS].find({"mid": m._id})))
 
             return m
         else:
             return m
-
 
     @classmethod
     def get_with_nick(cls, nick, **kwargs):
@@ -74,9 +78,8 @@ class Logics(object):
             `nick`  -   成员昵称
         """
 
-        m = cls.db[const.MEMBER].find_one({"nick":nick})
+        m = cls.db[const.MEMBER].find_one({"nick": nick})
         return cls.wrap_member(m, **kwargs)
-
 
     @classmethod
     def get_one(cls, jid, **kwargs):
@@ -85,12 +88,11 @@ class Logics(object):
             `jid`   -   成员jid
         """
         email = get_email(jid)
-        return cls.wrap_member(cls.db[const.MEMBER].find_one({"email":email}),
+        return cls.wrap_member(cls.db[const.MEMBER].find_one({"email": email}),
                                **kwargs)
 
-
     @classmethod
-    def add(cls, jid, nick = None, show = None):
+    def add(cls, jid, nick=None, show=None):
         """ 添加一个成员
         Arguments:
             `jid`   -   成员jid
@@ -101,16 +103,14 @@ class Logics(object):
             return
         if not nick:
             nick = get_email(jid).split("@")[0]
-        doc = {"email":get_email(jid), "nick":nick, "isonline":True,
-               "join_date":now()}
+        doc = {"email": get_email(jid), "nick": nick, "isonline": True,
+               "join_date": now()}
         mid = cls.db[const.MEMBER].insert(doc)
-        cls.db[const.STATUS].insert({"mid":mid, "statustext": show,
-                                     "resource" : jid.resource,
-                                     "status":const.ONLINE})
+        cls.db[const.STATUS].insert({"mid": mid, "statustext": show,
+                                     "resource": jid.resource,
+                                     "status": const.ONLINE})
 
         return cls.get_one(jid)
-
-
 
     @classmethod
     def drop(cls, jid):
@@ -120,27 +120,26 @@ class Logics(object):
         """
         m = cls.get_one(jid)
         try:
-            cls.db[const.MEMBER].remove({"email":get_email(jid)})
-            cls.db[const.STATUS].remove({"mid":m._id})
-            cls.db[const.INFO].remove({"mid":m._id})
+            cls.db[const.MEMBER].remove({"email": get_email(jid)})
+            cls.db[const.STATUS].remove({"mid": m._id})
+            cls.db[const.INFO].remove({"mid": m._id})
         except:
             traceback.print_exc()
 
         return
 
     @classmethod
-    def get_members(cls, remove = None, **kwargs):
+    def get_members(cls, remove=None, **kwargs):
         """ 获取所有成员
         Arguments:
             `remove`    -   排除成员
         """
         remove_email = get_email(remove)
         if remove:
-            ms = cls.db[const.MEMBER].find({"email":{"$ne":remove_email}})
+            ms = cls.db[const.MEMBER].find({"email": {"$ne": remove_email}})
             return cls.wrap_member(list(ms), **kwargs)
         ms = cls.db[const.MEMBER].find()
         return cls.wrap_member(list(ms), **kwargs)
-
 
     @classmethod
     def modify_nick(cls, jid, nick):
@@ -153,28 +152,28 @@ class Logics(object):
             True    // 更改昵称成功
         """
         m = cls.get_one(jid)
-        if not m: return False
+        if not m:
+            return False
         if m:
             exists = cls.get_with_nick(nick)
             if exists:
                 return False
-            cls.db[const.MEMBER].update({"_id":m._id},
-                                        {"$set":{"nick":nick, "last_change":now()},
-                                         "$push":{"used_nick":nick}})
+            cls.db[const.MEMBER].update({"_id": m._id},
+                                        {"$set": {"nick": nick, "last_change": now()},
+                                         "$push": {"used_nick": nick}})
             cls.set_info(jid, const.INFO_CHANGE_NICK_TIMES,
                          int(cls.get_info(jid,
-                                          const.INFO_CHANGE_NICK_TIMES ,
+                                          const.INFO_CHANGE_NICK_TIMES,
                                           0).value) + 1)
             return True
-
 
     @classmethod
     def get_one_status(cls, jid):
         m = cls.get_one(jid)
         if not m:
             return False, False
-        return cls.db[const.STATUS].find_one({"resource":jid.resource},
-                                               {"mid":m._id}), m
+        return cls.db[const.STATUS].find_one({"resource": jid.resource},
+                                             {"mid": m._id}), m
 
     @classmethod
     def set_online(cls, jid, show=None):
@@ -183,17 +182,17 @@ class Logics(object):
             `jid`   -   成员jid
             `show`  -   stanza.show
         """
-        status,m  = cls.get_one_status(jid)
+        status, m = cls.get_one_status(jid)
         if not m:
             return False
 
         if status:
-            cls.db[const.STATUS].update({"_id":status.get("_id")},
-                                        {"$set":{ "statustext":show}})
+            cls.db[const.STATUS].update({"_id": status.get("_id")},
+                                        {"$set": {"statustext": show}})
         else:
-            cls.db[const.STATUS].insert({"status":const.ONLINE,
-                                         "statustext":show,
-                                         "resource":jid.resource,
+            cls.db[const.STATUS].insert({"status": const.ONLINE,
+                                         "statustext": show,
+                                         "resource": jid.resource,
                                          "mid": m._id})
 
         return True
@@ -201,38 +200,37 @@ class Logics(object):
     @classmethod
     def set_offline(cls, jid):
         status, m = cls.get_one_status(jid)
-        if not m or not status: return False
-        cls.db[const.STATUS].remove({"_id":status.get("_id")})
-
+        if not m or not status:
+            return False
+        cls.db[const.STATUS].remove({"_id": status.get("_id")})
 
     @classmethod
-    def _get_info(cls, jid = None, key = None, default = None, is_global = False):
+    def _get_info(cls, jid=None, key=None, default=None, is_global=False):
         """ 获取成员选项
         Arguments:
             `jid`   -   jid
             `key`   -   选项键
             `default` -   默认值
         """
-        cond = {"key":key, "is_global":is_global}
+        cond = {"key": key, "is_global": is_global}
         m = None
         if jid:
             m = cls.get_one(jid)
             if not m:
-                return AttrDict( dict(key = key, value = default, is_global = is_global)), False, None
+                return AttrDict(dict(key=key, value=default, is_global=is_global)), False, None
             cond.update(mid=m._id)
         info = cls.db[const.INFO].find_one(cond)
 
         from_db = True
         if not info:
-            info = dict(key = key, value = default, is_global = is_global)
+            info = dict(key=key, value=default, is_global=is_global)
             from_db = False
 
         return AttrDict(info), from_db, m
 
     @classmethod
-    def get_info(cls, jid, key, default = None):
+    def get_info(cls, jid, key, default=None):
         return cls._get_info(jid, key, default)[0]
-
 
     @classmethod
     def set_info(cls, jid, key, value):
@@ -244,15 +242,14 @@ class Logics(object):
         """
         info, f, m = cls._get_info(jid, key)
         if f:
-            cls.db[const.INFO].update({"_id":info._id},
-                                      {"$set":{"value":value}})
+            cls.db[const.INFO].update({"_id": info._id},
+                                      {"$set": {"value": value}})
         else:
-            cls.db[const.INFO].insert({"key":key, "value":value,
-                                       "is_global":False,
-                                       "pubdate":now(),
-                                       "mid":m._id})
+            cls.db[const.INFO].insert({"key": key, "value": value,
+                                       "is_global": False,
+                                       "pubdate": now(),
+                                       "mid": m._id})
         return info
-
 
     @classmethod
     def get_today_rp(cls, jid):
@@ -269,28 +266,26 @@ class Logics(object):
             now = datetime.now()
 
             if now.year == rp_date.year and now.month == rp_date.month and \
-            now.day == rp_date.day:
+                    now.day == rp_date.day:
                 rp = Logics.get_info(jid, const.INFO_RP).value
 
         return rp
-
 
     @classmethod
     def set_today_rp(cls, jid, rp):
         cls.set_info(jid, const.INFO_RP, rp)
         cls.set_info(jid, const.INFO_RP_DATE, time.time())
-        cls.db[const.MEMBER].update({"email":get_email(jid)},
-                                    {"$push":{"rps":{"value":rp, "date":now()}}})
-
+        cls.db[const.MEMBER].update({"email": get_email(jid)},
+                                    {"$push": {"rps": {"value": rp, "date": now()}}})
 
     @classmethod
-    def get_global_info(cls, key, default = None):
+    def get_global_info(cls, key, default=None):
         """ 获取全局选项
         Arguments:
             `key`   -   选项键
             `default` -   默认值
         """
-        return cls._get_info(key = key, default = default, is_global = True)[0]
+        return cls._get_info(key=key, default=default, is_global=True)[0]
 
     @classmethod
     def set_global_info(cls, key, value):
@@ -299,90 +294,85 @@ class Logics(object):
             `key`   -   选项键
             `value` -   选项值
         """
-        info, f, _ = cls._get_info(key = key,  is_global = True)
+        info, f, _ = cls._get_info(key=key,  is_global=True)
         if f:
-            cls.db[const.INFO].update({"_id":info._id},
-                                      {"$set":{"value":value}})
+            cls.db[const.INFO].update({"_id": info._id},
+                                      {"$set": {"value": value}})
         else:
-            cls.db[const.INFO].insert({"key":key, "value":value,
-                                       "pubdate":now(), "is_global":True})
+            cls.db[const.INFO].insert({"key": key, "value": value,
+                                       "pubdate": now(), "is_global": True})
         return info
-
 
     @classmethod
     def add_history(cls, jid, to_jid, content):
         m = cls.get_one(jid)
-        cls.db[const.MEMBER].update({"_id":m._id}, {"$set":{"last_say":now()}})
-        cls.db[const.HISTORY].insert({"from_member":cls.db.ref(const.MEMBER, m._id),
-                                      "to_member":to_jid, "content":content,
-                                      "pubdate":now()})
-
+        cls.db[const.MEMBER].update(
+            {"_id": m._id}, {"$set": {"last_say": now()}})
+        cls.db[const.HISTORY].insert(
+            {"from_member": cls.db.ref(const.MEMBER, m._id),
+             "to_member": to_jid, "content": content,
+             "pubdate": now()})
 
     @classmethod
-    def get_history(cls, jid = None,  starttime = None):
+    def get_history(cls, jid=None,  starttime=None):
         """ 获取历史信息
         Arguments:
             `jid`   -   发送人
             `to`    -   接收人
             `starttime` -   开始时间
         """
-        condition = {"to_member":"all"}
+        condition = {"to_member": "all"}
         if jid:
             m = cls.get_one(jid)
-            condition.update({"from_member.$id":m._id})
+            condition.update({"from_member.$id": m._id})
 
         if starttime:
-            condition.update(pubdate = {"$gte":starttime})
+            condition.update(pubdate={"$gte": starttime})
 
-        return cls.db.deref(list(cls.db[const.HISTORY].find(condition)\
+        return cls.db.deref(list(cls.db[const.HISTORY].find(condition)
                                  .sort("pubdate", cls.db.asc)))
-
 
     @classmethod
     def is_online(cls, jid):
-        m = cls.get_one(jid, status = True)
+        m = cls.get_one(jid, status=True)
         return bool([status.status for status in m.status if status.status])
-
 
     @classmethod
     def empty_status(cls):
         cls.db[const.STATUS].remove()
 
-
     @classmethod
-    def get_all_rps(cls, starttime = None, endtime = None):
-        condition = {"key":const.INFO_RP}
+    def get_all_rps(cls, starttime=None, endtime=None):
+        condition = {"key": const.INFO_RP}
         if starttime or endtime:
             condition["pubdate"] = {}
 
             if starttime:
-                condition["pubdate"].update({"$gt":starttime})
+                condition["pubdate"].update({"$gt": starttime})
 
             if endtime:
-                condition["pubdate"].update({"$lte":endtime})
+                condition["pubdate"].update({"$lte": endtime})
 
         return list(cls.db[const.INFO].find(condition))
-
 
     @classmethod
     def get_today_rps(cls):
         now = now()
         starttime = datetime(now.year, now.month, now.day)
         endtime = datetime(now.year, now.month, now.day, 23, 59, 59)
-        return sorted(cls.get_all_rps(starttime, endtime), key = lambda x:x["value"])
-
+        return sorted(cls.get_all_rps(starttime, endtime), key=lambda x: x["value"])
 
     @classmethod
     def add_honor(cls, jid, value, typ, item, desc):
         m = cls.get_with_nick(jid)
 
-        doc = {"getdate":now(), "date":now(), "type":typ, "desc":desc,
-               "mid":m._id, "item":item, "value":value}
+        doc = {"getdate": now(), "date": now(), "type": typ, "desc": desc,
+               "mid": m._id, "item": item, "value": value}
         cls.db[const.HONOR].insert(doc)
 
     @classmethod
     def get_honor(cls, m):
-        honors = cls.db[const.HONOR].find({"mid":m._id})
+        honors = cls.db[const.HONOR].find({"mid": m._id})
         return list(honors)
 
     @classmethod
